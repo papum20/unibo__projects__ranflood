@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -89,7 +90,7 @@ public class SSSRestorer {
 		try ( DirectoryStream<Path> stream = Files.newDirectoryStream(dir) ) {
 			for (Path file : stream) {
 
-				if (Files.isDirectory(file)) {
+				if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) {
 					try {
 						findShards(file);
 					} catch (IOException e) {
