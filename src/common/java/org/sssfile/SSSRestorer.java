@@ -157,11 +157,11 @@ public class SSSRestorer {
 		logger.logDebug("Recovering file: " + original_file.path);
 		scheme = new Scheme(random_generator, original_file.n, original_file.k);
 		byte[] recovered = scheme.join(original_file.parts);
-
+		
 		if(!original_file.isValid(recovered)) {
 			String hash_found;
             hash_found = Security.hashBytesB64(recovered);
-            logger.fileErrorBadHash(original_file, hash_found );
+            logger.fileErrorBadHash(original_file, hash_found);
 			throw new InvalidOriginalFileException(
 					"Restored checksum doesn't match (got " + original_file.getHashBase64() + " , found " + hash_found + " ): " + original_file.path);
 		}
