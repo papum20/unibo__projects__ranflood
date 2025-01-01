@@ -42,7 +42,7 @@ public class SSSSplitter {
 
 	public final int	n,
 						k;
-	public final long	generation;
+	public  long	generation;
 
 
 	/**
@@ -75,6 +75,7 @@ public class SSSSplitter {
 		if(ShardFile.isValid(content)) {
 			throw new InvalidOriginalFileException("Can't split a shard again.");
 		}
+		this.generation = System.nanoTime();	// unique for each flood (for this instance)
 
 		Map<Integer, byte[]> parts = scheme.split(content);
 		return new OriginalFile(path, checksum, parts, n, k, generation);

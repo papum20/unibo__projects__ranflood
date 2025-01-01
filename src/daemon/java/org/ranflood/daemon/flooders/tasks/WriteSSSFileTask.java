@@ -62,10 +62,10 @@ public class WriteSSSFileTask extends WriteFileTask {
 
 			try {
 				// split with sss
-				long time_start = System.currentTimeMillis();
+				//long time_start = System.currentTimeMillis();
 				OriginalFile original_file = sss.getSplitFile(filePath(), content(), Security.hash_fromBase64(signature));
-				long time_end = System.currentTimeMillis();
-System.out.println(filePath() + ", time split: " + (time_end - time_start));
+				//long time_end = System.currentTimeMillis();
+				//System.out.println(filePath() + ", time split: " + (time_end - time_start));
 
 				// try to write all shards
 				int shards_created = 0;
