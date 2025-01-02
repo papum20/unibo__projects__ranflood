@@ -21,6 +21,8 @@
 
  package org.sssfile;
 
+import com.republicate.json.Json;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -31,15 +33,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 
 import com.codahale.shamir.Scheme;
 import org.ranflood.common.RanfloodLogger;
 import org.ranflood.common.utils.Pair;
+import org.ranflood.util.Collections;
 import org.sssfile.exceptions.InvalidOriginalFileException;
 import org.sssfile.exceptions.InvalidShardException;
 import org.sssfile.exceptions.UnrecoverableOriginalFileException;
 import org.sssfile.files.OriginalFile;
 import org.sssfile.files.ShardFile;
+import org.sssfile.files.RestoredFilesList.OriginalFileEntry;
 import org.sssfile.files.RestoredFilesList;
 import org.sssfile.util.LoggerRestore;
 import org.sssfile.util.LoggerResult;
@@ -58,7 +63,7 @@ public class SSSRestorer {
 	// group shards by original file name
 	private final RestoredFilesList shard_groups;
 
-	private Iterator<OriginalFile> iterator = null;
+	private Iterator<OriginalFileEntry> iterator = null;
 	private int iterator_count = 0;
 
 
@@ -117,7 +122,7 @@ public class SSSRestorer {
 				shard_groups.addShard(shard);
 
 				logger.foundShard(shard.path, true, shard.generation);
-				logger.logDebug("New shards of " + shard_groups.get(shard.hashCode()).path + ": " + shard_groups.get(shard.hashCode()).parts.size());
+				logger.logDebug("New shards of " + shard_groups.get(shard.hashCode()).getPath() + ": " + shard_groups.get(shard.hashCode()).size());
 
 			}
 		}
@@ -145,8 +150,11 @@ public class SSSRestorer {
 			iterator = null;
 			return null;
 		}
-		OriginalFile original_file = iterator.next();
 		iterator_count++;
+		OriginalFileEntry entry = iterator.next();
+		OriginalFile original_file = entry.getOriginalFile();
+
+		logger.logDebug("Restoring file: " + original_file.path + "; shard files: " + entry.size() + "; valid shards: " + original_file.parts.size());
 
 		if(original_file.parts.size() < original_file.k) {
 			logger.fileErrorUnrecoverable(original_file.path, original_file.k, original_file.parts.size());
@@ -156,7 +164,10 @@ public class SSSRestorer {
 
 		logger.logDebug("Recovering file: " + original_file.path);
 		scheme = new Scheme(random_generator, original_file.n, original_file.k);
-		byte[] recovered = scheme.join(original_file.parts);
+
+		// when possible, reduce the time of execution
+		LinkedHashMap<Integer, byte[]> parts = Collections.subset(original_file.parts, original_file.k);
+		byte[] recovered = scheme.join(parts);
 		
 		if(!original_file.isValid(recovered)) {
 			String hash_found;
@@ -194,5 +205,9 @@ public class SSSRestorer {
 		logger.deleteShard(path, success);
 	}
 
+
+	public Json.Array getShardsReportJson() {
+		return shard_groups.toJsonArray();
+	}
 
 }

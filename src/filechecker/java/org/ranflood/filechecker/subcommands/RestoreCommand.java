@@ -43,19 +43,25 @@ public class RestoreCommand implements Callable< Integer > {
 
   @CommandLine.Parameters(
       index = "1",
-      description = "the path to the report file"
+      description = "the path to the report file (report on found shards)"
   )
-  private File report_file;
+  private File report_shards_file;
 
   @CommandLine.Parameters(
       index = "2",
+      description = "the path to the report file (report after restoration)"
+  )
+  private File report_restored_file;
+
+  @CommandLine.Parameters(
+      index = "3",
       description = "the path to the root folder of the files to check"
   )
   private File folder;
 
   @CommandLine.Option(
       names = { "--debug" },
-      description = "If also specified --logfile, print more debugging logs."
+      description = "If --logfile was also used, print more debugging logs."
   )
   private Boolean debug = false;
 
@@ -75,11 +81,12 @@ public class RestoreCommand implements Callable< Integer > {
   @Override
   public Integer call() {
     try {
-      Restore.run( checksumFile, folder, report_file, delete, log_file, debug );
-      System.out.println( "Report of the check of folder " + folder + " saved in file " + report_file.getAbsolutePath() );
+      Restore.run( checksumFile, folder, report_shards_file, report_restored_file, delete, log_file, debug );
+      System.out.println( "Shards report of the check of folder " + folder + " saved in file " + report_shards_file.getAbsolutePath() );
+      System.out.println( "Restoration report of the check of folder " + folder + " saved in file " + report_restored_file.getAbsolutePath() );
     } catch ( IOException e ) {
       e.printStackTrace();
-      System.err.println( "Problem writing the report, " + e.getMessage() );
+      System.err.println( "Problem writing a report, " + e.getMessage() );
     }
     return 0;
   }

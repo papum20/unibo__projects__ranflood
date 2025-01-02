@@ -22,6 +22,7 @@
 package org.ranflood.daemon.flooders.tasks;
 
 import org.ranflood.common.FloodMethod;
+import org.ranflood.util.Jvm;
 import org.sssfile.SSSSplitter;
 import org.sssfile.exceptions.InvalidOriginalFileException;
 import org.sssfile.files.FileNamesGenerator;
@@ -37,7 +38,6 @@ import java.security.NoSuchAlgorithmException;
 
 import static org.ranflood.common.RanfloodLogger.log;
 import static org.ranflood.common.RanfloodLogger.error;
-import org.ranflood.common.utils.Jvm;
 
 public class WriteSSSFileTask extends WriteFileTask {
 

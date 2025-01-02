@@ -19,7 +19,7 @@
  * For details about the authors of this software, see the AUTHORS file.      *
  ******************************************************************************/
 
-package org.ranflood.common.utils;
+package org.ranflood.util;
 
 public class Jvm {
 

@@ -44,7 +44,7 @@ import org.sssfile.util.LoggerResult;
 
 public class Restore {
 
-  public static void run( File checksum, File folder, File report,
+  public static void run( File checksum, File folder, File report_shards, File report_restored,
                           Boolean remove_shards,
                           File log, Boolean debug
   ) throws IOException {
@@ -71,6 +71,9 @@ public class Restore {
 
     sss.findShards();
     LoggerResult stats = sss.getStats();
+
+    Json.Array shards_json = sss.getShardsReportJson();
+    Files.writeString( report_shards.toPath(), shards_json.toString() );
 
     /* write original files */
     LinkedList< Pair< Path, Path > > files_path_conflict = new LinkedList<>(),  // old/new path
@@ -206,7 +209,7 @@ public class Restore {
     report_content.put( "Error other", json_files_error_other );
     report_content.put( "Stats", json_files_error_other );
 
-    Files.writeString( report.toPath(), report_content.toString() );
+    Files.writeString( report_restored.toPath(), report_content.toString() );
 
   }
 
