@@ -19,6 +19,7 @@
  * For details about the authors of this software, see the AUTHORS file.      *
  ******************************************************************************/
 
+<<<<<<< HEAD
 /*
  * Try the SSS operations, by calling Codahale's library directly.
  * Commented out are some testcases configurations.
@@ -26,6 +27,9 @@
 
 
 package playground.sss;
+=======
+package playground;
+>>>>>>> 7e38b9db762bb448da5818926f3f400ac714bfdf
 
 import com.codahale.shamir.Scheme;
 
