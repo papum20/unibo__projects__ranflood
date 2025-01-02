@@ -102,6 +102,9 @@ public class WriteSSSFileTask extends WriteFileTask {
 			} catch ( InvalidOriginalFileException e ) {
 				// it just means it's a shard and won't be split again
 				// don't log, as there could be a lot of logs, and IO is very expensive
+			} catch ( OutOfMemoryError e ) {
+				// maybe the task will be able to run later
+				error( "Out of memory, when splitting with SSS: " + filePath() );
 			}
 
 

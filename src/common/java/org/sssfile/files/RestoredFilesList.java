@@ -111,6 +111,8 @@ public class RestoredFilesList extends LinkedHashMap<Integer, OriginalFileEntry>
 					}
 					original_file.addShard(path, shard.key, shard.shard);
 				} catch (InvalidShardException | IOException e) {
+					// shouldn't happen here:
+					// if a shard arrived here, it was already considered valid when adding it
 					e.printStackTrace();
 				}
 
