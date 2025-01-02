@@ -252,12 +252,12 @@ public class LoggerRestore {
 			logDebug(msg);
 		}
 	}
-	public void foundShard(Path path, boolean valid) {
+	public void foundShard(Path path, boolean valid, long generation) {
 
 		stats.n_analyzed++;
 		if(valid) stats.n_shards_valid++;
 		if(debug_restore) {
-			String msg = "Analyzed shard: " + path + "; valid shard = " + valid;
+			String msg = "Analyzed shard: " + path + "; generation = " + generation + "; valid shard = " + valid;
 			logDebug(msg);
 		}
 	}

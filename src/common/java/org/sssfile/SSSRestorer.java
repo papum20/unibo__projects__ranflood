@@ -103,7 +103,7 @@ public class SSSRestorer {
 				try {
 					shard = ShardFile.fromFile(file);
 				} catch (InvalidShardException e) {
-					logger.foundShard(file, false);
+					logger.foundShard(file, false, -1);
 					continue;
 				} catch (IOException e) {
 					logger.fileErrorReading(file);
@@ -116,7 +116,7 @@ public class SSSRestorer {
 
 				shard_groups.addShard(shard);
 
-				logger.foundShard(shard.path, true);
+				logger.foundShard(shard.path, true, shard.generation);
 				logger.logDebug("New shards of " + shard_groups.get(shard.hashCode()).path + ": " + shard_groups.get(shard.hashCode()).parts.size());
 
 			}
@@ -180,6 +180,18 @@ public class SSSRestorer {
 
 	public LoggerResult getStats() {
 		return logger.getStats();
+	}
+
+
+	public void logSummary() {
+		logger.summary();
+	}
+	
+	/**
+	 * Mark a file as deleted, for logging.
+	 */
+	public void logDelete(Path path, boolean success) {
+		logger.deleteShard(path, success);
 	}
 
 

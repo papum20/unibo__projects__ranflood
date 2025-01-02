@@ -21,9 +21,7 @@
 
 package org.sssfile;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.Map;
@@ -55,7 +53,9 @@ public class SSSSplitter {
 		scheme = new Scheme(random_generator, n, k);
 		this.n = n;
 		this.k = k;
-		this.generation = System.nanoTime();	// unique for each flood (for this instance)
+
+		// change it for each getSplitFile()
+		//this.generation = System.nanoTime();	// unique for each flood (for this instance)
 	}
 
 

@@ -51,7 +51,7 @@ public class Restore {
 
     /* check params */
     if ( !Files.exists( checksum.toPath().toAbsolutePath().getParent() ) )
-      throw new IOException( "could not file checksum file " + checksum.toPath() );
+      throw new IOException( "could not find checksum file " + checksum.toPath() );
     if ( !Files.exists( folder.toPath() ) )
       throw new IOException( "folder " + folder + " does not exist" );
     if ( !Files.isDirectory( folder.toPath() ) )
@@ -146,12 +146,16 @@ public class Restore {
           shards_tot++;
           try {
             Files.delete( shard_path );
+            sss.logDelete(file_path, true);
           } catch ( IOException e ) {
             shards_error_delete.add( shard_path );
           }
         }
       }
     }
+
+    sss.logSummary();
+
 
     /* collect and report logs */
 

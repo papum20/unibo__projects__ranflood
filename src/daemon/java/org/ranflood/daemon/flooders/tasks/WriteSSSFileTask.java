@@ -35,8 +35,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 
-import static org.ranflood.common.RanfloodLogger.error;
 import static org.ranflood.common.RanfloodLogger.log;
+import static org.ranflood.common.RanfloodLogger.error;
+import org.ranflood.common.utils.Jvm;
 
 public class WriteSSSFileTask extends WriteFileTask {
 
@@ -52,6 +53,8 @@ public class WriteSSSFileTask extends WriteFileTask {
 
 	public Runnable getRunnableTask() {
 		return () -> {
+
+			log("Task SSS for: " + filePath() + "; signature: " + signature + "; memoryFree: " + Jvm.freeMemory());
 
 			File parentFolder = filePath().getParent().toFile();
 			if ( !parentFolder.exists() ) {
