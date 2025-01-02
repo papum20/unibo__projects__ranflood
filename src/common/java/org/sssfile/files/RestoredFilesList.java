@@ -26,12 +26,34 @@
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+ import java.util.stream.Collectors;
 
-import org.sssfile.exceptions.InvalidShardException;
+ import org.sssfile.exceptions.InvalidShardException;
 import org.sssfile.files.RestoredFilesList.OriginalFileEntry;
 
 
 public class RestoredFilesList extends LinkedHashMap<Integer, OriginalFileEntry> {
+
+
+	public RestoredFilesList() {
+		super();
+	}
+
+	private RestoredFilesList(Map<Integer, OriginalFileEntry> map) {
+		super(map);
+	}
+
+	public static RestoredFilesList fromJson(Json json) {
+		return new RestoredFilesList( json.asArray()
+				.stream()
+				.map( e -> ( Json.Object ) e )
+				.collect( Collectors.toMap(
+						e -> Integer.valueOf( e.get( "hashCode" ).toString() ),
+						e -> OriginalFileEntry.fromJson(( Json.Array ) e.get( "shards" ))
+				))
+		);
+
+	}
 
 
 	public void addShard(ShardFile shard) {
@@ -71,7 +93,7 @@ public class RestoredFilesList extends LinkedHashMap<Integer, OriginalFileEntry>
 	 * An entry for an original file, represented as the list of its shards paths,
 	 * so that their contents can be retrieved later.
 	 */
-	public class OriginalFileEntry extends LinkedList<Path> {
+	public static class OriginalFileEntry extends LinkedList<Path> {
 
 		private Path path;
 		/**
@@ -91,6 +113,21 @@ public class RestoredFilesList extends LinkedHashMap<Integer, OriginalFileEntry>
 			this.path = path;
 			this.is_original_path = is_original_path;
 		}
+
+		private OriginalFileEntry(Collection<Path> values) {
+			super(values);
+			if (!isEmpty())
+				this.path = getFirst();
+		}
+
+		public static OriginalFileEntry fromJson(Json.Array json) {
+			return new OriginalFileEntry(
+				json.stream()
+				.map( shard -> Path.of(( String) (( Json.Object ) shard).get( "path" )) )
+				.collect( Collectors.toList() )
+			);
+		}
+
 
 		@Override
 		public boolean add(Path path) {

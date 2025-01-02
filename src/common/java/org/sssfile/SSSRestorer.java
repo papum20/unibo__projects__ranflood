@@ -34,6 +34,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.codahale.shamir.Scheme;
 import org.ranflood.common.RanfloodLogger;
@@ -61,7 +63,7 @@ public class SSSRestorer {
 	private final Path root;
 
 	// group shards by original file name
-	private final RestoredFilesList shard_groups;
+	private RestoredFilesList shard_groups;
 
 	private Iterator<OriginalFileEntry> iterator = null;
 	private int iterator_count = 0;
@@ -201,13 +203,17 @@ public class SSSRestorer {
 	/**
 	 * Mark a file as deleted, for logging.
 	 */
-	public void logDelete(Path path, boolean success) {
-		logger.deleteShard(path, success);
+	public void logDelete(Path path_shard, Path path_original, boolean success) {
+		logger.deleteShard(path_shard, path_original, success);
 	}
 
 
 	public Json.Array getShardsReportJson() {
 		return shard_groups.toJsonArray();
+	}
+
+	public void loadShardsReportJson(Json json) {
+		shard_groups = RestoredFilesList.fromJson(json);
 	}
 
 }

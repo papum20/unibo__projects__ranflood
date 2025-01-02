@@ -43,7 +43,7 @@ public class RestoreCommand implements Callable< Integer > {
 
   @CommandLine.Parameters(
       index = "1",
-      description = "the path to the report file (report on found shards)"
+      description = "the path to the report file (report on found shards) - if it already exists, it will be used, otherwise it will be created"
   )
   private File report_shards_file;
 

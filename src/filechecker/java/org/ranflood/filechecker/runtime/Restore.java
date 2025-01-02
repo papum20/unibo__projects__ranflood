@@ -69,11 +69,17 @@ public class Restore {
     Path file_log = ( log != null ) ? log.toPath() : null;
     SSSRestorer sss = new SSSRestorer( folder.toPath(), file_log, file_log != null, debug );
 
-    sss.findShards();
+    if ( Files.exists(report_shards.toPath().toAbsolutePath()) ) {
+      Json report_shards_json = Json.parse( Files.readString( report_shards.toPath() ) );
+      sss.loadShardsReportJson(report_shards_json);
+    } else {
+      sss.findShards();
+      Json.Array shards_json = sss.getShardsReportJson();
+      Files.writeString( report_shards.toPath(), shards_json.toString() );
+    }
+
     LoggerResult stats = sss.getStats();
 
-    Json.Array shards_json = sss.getShardsReportJson();
-    Files.writeString( report_shards.toPath(), shards_json.toString() );
 
     /* write original files */
     LinkedList< Pair< Path, Path > > files_path_conflict = new LinkedList<>(),  // old/new path
@@ -149,7 +155,7 @@ public class Restore {
           shards_tot++;
           try {
             Files.delete( shard_path );
-            sss.logDelete(file_path, true);
+            sss.logDelete(shard_path, file_path, true);
           } catch ( IOException e ) {
             shards_error_delete.add( shard_path );
           }

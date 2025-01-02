@@ -161,14 +161,14 @@ public class LoggerRestore {
 
 	/* on original files */
 
-	public void deleteShard(Path path, boolean success) {
+	public void deleteShard(Path path_shard, Path path_original, boolean success) {
 
 		if(success) stats.n_shards_deleted++;
 			
 		if(debug_restore) {
 			String msg = success
-				? "[Deleted]\tShard deleted: " + path
-				: "[Error]\tCould not delete shard, IO exception: " + path;
+				? "[Deleted]\tShard deleted: " + path_shard + " for " + path_original
+				: "[Error]\tCould not delete shard, IO exception: " + path_original;
 			logLine(msg);
 			report(msg);
 		}
