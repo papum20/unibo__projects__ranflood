@@ -166,14 +166,10 @@ public class SSSRestorer {
 
 		logger.logDebug("Recovering file: " + original_file.path);
 		scheme = new Scheme(random_generator, original_file.n, original_file.k);
-<<<<<<< HEAD
 
 		// when possible, reduce the time of execution
 		LinkedHashMap<Integer, byte[]> parts = Collections.subset(original_file.parts, original_file.k);
 		byte[] recovered = scheme.join(parts);
-=======
-		byte[] recovered = scheme.join(original_file.parts);
->>>>>>> 7e38b9db762bb448da5818926f3f400ac714bfdf
 		
 		if(!original_file.isValid(recovered)) {
 			String hash_found;
