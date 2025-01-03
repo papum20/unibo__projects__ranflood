@@ -77,11 +77,17 @@ public class RestoreCommand implements Callable< Integer > {
   )
   private File log_file = null;
 
+  @CommandLine.Option(
+          names = { "-e", "--exclude" },
+          description = "Exclude dirs. Can repeat to indicate more exclusions."
+  )
+  private File[] exclude_dirs = null;
+
 
   @Override
   public Integer call() {
     try {
-      Restore.run( checksumFile, folder, report_shards_file, report_restored_file, delete, log_file, debug );
+      Restore.run( checksumFile, folder, report_shards_file, report_restored_file, exclude_dirs, delete, log_file, debug );
       System.out.println( "Shards report of the check of folder " + folder + " saved in file " + report_shards_file.getAbsolutePath() );
       System.out.println( "Restoration report of the check of folder " + folder + " saved in file " + report_restored_file.getAbsolutePath() );
     } catch ( IOException e ) {

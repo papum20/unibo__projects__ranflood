@@ -23,6 +23,7 @@
 
 import com.republicate.json.Json;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -31,10 +32,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.codahale.shamir.Scheme;
@@ -86,20 +84,20 @@ public class SSSRestorer {
 	/**
 	 * Find all shards in a directory, and group them by original file in `shard_groups`.
 	 */
-	public void findShards() throws IOException {
+	public void findShards(Set<Path> exclude_dirs) throws IOException {
 		logger.start();
-		findShards(root);
+		findShards(root, exclude_dirs);
 		logger.summary();
 	}
 
-	private void findShards(Path dir) throws IOException {
+	private void findShards(Path dir, Set<Path> exclude_dirs) throws IOException {
 
 		try ( DirectoryStream<Path> stream = Files.newDirectoryStream(dir) ) {
 			for (Path file : stream) {
 
-				if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) {
+				if ( Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS) && !exclude_dirs.contains(file.toAbsolutePath()) ) {
 					try {
-						findShards(file);
+						findShards(file, exclude_dirs);
 					} catch (IOException e) {
 						System.err.println(e.getMessage());
 					}

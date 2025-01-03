@@ -46,6 +46,7 @@ import static org.ranflood.filechecker.runtime.Check.check;
 public class Restore {
 
   public static void run( File checksum, File folder, File report_shards, File report_restored,
+                          File[] exclude_dirs,
                           Boolean remove_shards,
                           File log, Boolean debug
   ) throws IOException {
@@ -66,6 +67,10 @@ public class Restore {
             e -> e.get( "checksum" ).toString() )
         );
 
+    Set<Path> exclude_set = Arrays.stream(exclude_dirs)
+            .map(dir -> Path.of(dir.getAbsolutePath()) )
+            .collect(Collectors.toSet());
+
     /* run sss search */
     Path file_log = ( log != null ) ? log.toPath() : null;
     SSSRestorer sss = new SSSRestorer( folder.toPath(), file_log, file_log != null, debug );
@@ -74,7 +79,7 @@ public class Restore {
       Json report_shards_json = Json.parse( Files.readString( report_shards.toPath() ) );
       sss.loadShardsReportJson(report_shards_json);
     } else {
-      sss.findShards();
+      sss.findShards(exclude_set);
       Json.Array shards_json = sss.getShardsReportJson();
       Files.writeString( report_shards.toPath(), shards_json.toString() );
     }
