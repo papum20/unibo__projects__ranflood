@@ -139,6 +139,7 @@ public class LoggerRestore {
 	public void summary() {
 
 		LocalDateTime now = LocalDateTime.now();
+		if (time_start == null) time_start = now;
 		Duration time_elapsed = Duration.between( time_start, now );
 		String msg =
 			"--- Summary ---\n" +

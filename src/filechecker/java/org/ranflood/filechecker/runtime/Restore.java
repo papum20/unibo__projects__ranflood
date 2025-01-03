@@ -28,8 +28,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.ranflood.common.RanfloodLogger;
@@ -40,6 +39,8 @@ import org.sssfile.exceptions.UnrecoverableOriginalFileException;
 import org.sssfile.files.FileNamesGenerator;
 import org.sssfile.files.OriginalFile;
 import org.sssfile.util.LoggerResult;
+
+import static org.ranflood.filechecker.runtime.Check.check;
 
 
 public class Restore {
@@ -82,10 +83,19 @@ public class Restore {
 
 
     /* write original files */
-    LinkedList< Pair< Path, Path > > files_path_conflict = new LinkedList<>(),  // old/new path
-        files_wrong_snapshot = new LinkedList<>();
-    LinkedList< Path > files_error_io = new LinkedList<>(),
-        shards_error_delete = new LinkedList<>();
+    LinkedList< Pair< Path, Path > >  files_path_conflict   = new LinkedList<>(), // old/new path
+                                      files_wrong_snapshot  = new LinkedList<>();
+    // map of path - signature
+    LinkedHashMap< Path, String >
+                        // paths of files already existing, with correct signature (any related shards will thus be ignored)
+                        files_recovered_already_exist   = new LinkedHashMap<>(),
+                        // paths of all files present in the checksum, still existing and which didn't need any recover
+                        files_already_exist             = new LinkedHashMap<>(),
+                        files_recovered                 = new LinkedHashMap<>(),
+                        // paths of recovered files which weren't saved in the checksum (also including files_wrong_snapshot)
+                        files_recovered_new             = new LinkedHashMap<>(),
+                        files_error_io                  = new LinkedHashMap<>(),
+                        shards_error_delete             = new LinkedHashMap<>();
     int shards_tot = 0,
         original_files_error_get = 0;
     int iterator_percentage = 0;
@@ -125,29 +135,38 @@ public class Restore {
         }
       }
 
-      if ( signature_found == null || !signature_found.equals( original_file.left().getHashBase64() ) ) {
-        // change name if path or snapshot conflict
+      String signature_restored = original_file.left().getHashBase64();
+      if ( signature_found == null || !signature_found.equals( signature_restored ) ) {
 
 				/*	if snapshot doesn't contain the checksum, just continue writing the file (shards contain original hash);
 					if snapshot doesn't match with checksum, use another name (since we already checked with shard's hash,
 					snapshot was not up-to-date)
 				 */
-        if ( ( signature_snapshot != null && !signature_snapshot.equals( original_file.left().getHashBase64() ) ) ) {
-          file_path = FileNamesGenerator.getUniquePath( file_path.toString() );  // also avoid other name conflicts for already existing files
-          files_wrong_snapshot.add( new Pair<>( original_file.left().path.toAbsolutePath(), file_path ) );
-        } else if ( file_exists ) {
-          file_path = FileNamesGenerator.getUniquePath( file_path.toString() );
-          files_path_conflict.add( new Pair<>( original_file.left().path.toAbsolutePath(), file_path ) );
-        }
-
-        // don't write only if file with same checksum was found
         try {
-          Files.write( file_path, original_file.right() );
+          // change name if path or snapshot conflict
+          if ( ( signature_snapshot != null && !signature_snapshot.equals( signature_restored ) ) ) {
+            file_path = FileNamesGenerator.getUniquePath( file_path.toString() );  // also avoid other name conflicts for already existing files
+            Files.write( file_path, original_file.right() );
+            // register for report after writing, so that we only register an error in case an exception occurs
+            files_wrong_snapshot.add( new Pair<>( original_file.left().path.toAbsolutePath(), file_path ) );
+            files_recovered_new.put(file_path, signature_restored);
+          } else if ( file_exists ) {
+            file_path = FileNamesGenerator.getUniquePath( file_path.toString() );
+            Files.write( file_path, original_file.right() );
+            files_path_conflict.add( new Pair<>( original_file.left().path.toAbsolutePath(), file_path ) );
+            files_recovered.put(file_path, signature_restored);
+          } else {
+            Files.write( file_path, original_file.right() );
+            files_recovered.put(file_path, signature_restored);
+          }
         } catch ( IOException e ) {
-          files_error_io.add( original_file.left().path.toAbsolutePath() );
+          files_error_io.put( original_file.left().path.toAbsolutePath(), signature_restored );
           // don't delete shards if original file is missing and couldn't be written
           continue;
         }
+      } else {
+        // don't write only if file with same checksum was found
+        files_recovered_already_exist.put(file_path, signature_snapshot);
       }
 
       if ( remove_shards ) {
@@ -157,7 +176,7 @@ public class Restore {
             Files.delete( shard_path );
             sss.logDelete(shard_path, file_path, true);
           } catch ( IOException e ) {
-            shards_error_delete.add( shard_path );
+            shards_error_delete.put( shard_path, signature_restored );
           }
         }
       }
@@ -165,13 +184,70 @@ public class Restore {
 
     sss.logSummary();
 
+    /*  complement files_recovered_already_exist with those files present in the checksum and which are still there
+        (although weren't restored)
+    */
+    LinkedHashMap<String, Path> recovered_inverted = new LinkedHashMap<>();
+    for (Map.Entry<Path, String> recovered : files_recovered.entrySet()) {
+      recovered_inverted.put(recovered.getValue(), recovered.getKey());
+    }
+
+    for (Map.Entry<String, String> entry : checksum_map.entrySet()) {
+      Path path = Path.of(entry.getKey());
+      String signature_found = null;
+      if (Files.exists(path) ) {
+        try {
+          signature_found = Utils.getFileSignature(path);
+        } catch ( NoSuchAlgorithmException | Utils.OutOfMemoryException e ) {
+          System.err.println( e.getMessage() );
+        }
+
+        if ( signature_found != null && signature_found.equals(entry.getValue())
+                && !recovered_inverted.containsKey(signature_found)
+        ) {
+          files_already_exist.put(path, signature_found);
+        }
+      }
+    }
+
+
+    /* check all files from checksum */
+    Map< String, String > report_check_content = check(folder, checksum_map, true);
+
 
     /* collect and report logs */
 
-    Json.Object json_files_recovered = new Json.Object();
-    stats.files_recovered.forEach( ( file_info ) ->
-        json_files_recovered.put( file_info.getAbsolutePath(), file_info.getInfo() )
-    );
+    // maps
+    Json.Array json_files_recovered = new Json.Array();
+    files_recovered.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key.toString() );
+      o.put( "checksum", value );
+      json_files_recovered.add( o );
+    } );
+    Json.Array json_files_recovered_new = new Json.Array();
+    files_recovered_new.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key.toString() );
+      o.put( "checksum", value );
+      json_files_recovered_new.add( o );
+    } );
+    Json.Array json_recovered_already_exist = new Json.Array();
+    files_recovered_already_exist.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key.toString() );
+      o.put( "checksum", value );
+      json_recovered_already_exist.add( o );
+    } );
+    Json.Array json_already_exist = new Json.Array();
+    files_already_exist.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key.toString() );
+      o.put( "checksum", value );
+      json_already_exist.add( o );
+    } );
+
+    // lists
     Json.Object json_files_path_conflict = new Json.Object();
     files_path_conflict.forEach( ( file_info ) ->
         json_files_path_conflict.put( file_info.right().toString(), "Original path was: " + file_info.right() )
@@ -180,18 +256,37 @@ public class Restore {
     files_wrong_snapshot.forEach( ( file_info ) ->
         json_files_wrong_snapshot.put( file_info.right().toString(), "Original path was: " + file_info.right() )
     );
+
+    // check
+    Json.Array json_report_check = new Json.Array();
+    report_check_content.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key );
+      o.put( "checksum", value );
+      json_report_check.add( o );
+    } );
+
+    // errors
     Json.Object json_files_error_checksum = new Json.Object();
     stats.files_error_checksum.forEach( ( file_info ) ->
         json_files_error_checksum.put( file_info.getAbsolutePath(), file_info.getInfo() )
     );
-    Json.Object json_files_error_io = new Json.Object();
-    files_error_io.forEach( ( path ) ->
-        json_files_error_io.put( path.toString(), "Couldn't write" )
-    );
-    Json.Object json_shards_error_delete = new Json.Object();
-    shards_error_delete.forEach( ( path ) ->
-        json_shards_error_delete.put( path.toString(), "Couldn't delete" )
-    );
+    Json.Array json_files_error_io = new Json.Array();
+    files_error_io.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key.toString() );
+      o.put( "checksum", value );
+      json_files_error_io.add( o );
+    } );
+    Json.Array json_shards_error_delete = new Json.Array();
+    shards_error_delete.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key.toString() );
+      o.put( "checksum", value );
+      json_shards_error_delete.add( o );
+    } );
+
+    // stats
     Json.Object json_files_error_insufficient = new Json.Object();
     stats.files_error_insufficient.forEach( ( file_info ) ->
         json_files_error_insufficient.put( file_info.getAbsolutePath(), file_info.getInfo() )
@@ -200,23 +295,42 @@ public class Restore {
     stats.files_error_other.forEach( ( file_info ) ->
         json_files_error_other.put( file_info.getAbsolutePath(), file_info.getInfo() )
     );
-    json_files_error_other.put( "Shards total", shards_tot );
-    json_files_error_other.put( "Shards deleted", shards_tot - shards_error_delete.size() );
-    json_files_error_other.put( "Restored files not written for other errors", original_files_error_get );
+    Json.Object json_stats = new Json.Object();
+    json_stats.put( "Shards total", shards_tot );
+    json_stats.put( "Shards deleted", shards_tot - shards_error_delete.size() );
+    json_stats.put( "Restored files not written for other errors", original_files_error_get );
 
     Json.Object report_content = new Json.Object();
-    report_content.put( "Recovered", json_files_recovered );
-    report_content.put( "Recovered, but changed name because a different file with the same name was found", json_files_path_conflict );
-    report_content.put( "Recovered, but changed name because snapshot has a different checksum", json_files_wrong_snapshot );
-    report_content.put( "Couldn't write these files, retry.", json_files_error_io );
-    report_content.put( "Couldn't delete these shards, but they can be removed safely as they were already recovered", json_shards_error_delete );
-    report_content.put( "Error checksum", json_files_error_checksum );
-    report_content.put( "Error insufficient shards", json_files_error_insufficient );
-    report_content.put( "Error other", json_files_error_other );
-    report_content.put( "Stats", json_files_error_other );
+    report_content.put( reportFilesKey("Tot: saved in checksum",                                                                                      checksum_map.size()),                   null );
+    report_content.put( reportFilesKey("Tot: saved in checksum and still present, with correct signature",                                            report_check_content.size()),           json_report_check );
+    report_content.put( reportFilesKey("Total valid files (including recovered and those not corrupted)",                                             report_check_content.size()),           json_report_check );
+    report_content.put( reportFilesKey("Recovered: present in checksum and file not existing, but now recovered",                                     files_recovered.size()),                json_files_recovered );
+    report_content.put( reportFilesKey("Recovered, path conflict: recovered but changed name because a different file with the same name was found",  files_path_conflict),                   json_files_path_conflict );
+    report_content.put( reportFilesKey("Recovered, wrong checksum: recovered but changed name because snapshot has a different checksum",             files_wrong_snapshot),                  json_files_wrong_snapshot );
+    report_content.put( reportFilesKey("Recovered: already existing, with correct signature",                                                         files_recovered_already_exist.size()),  json_recovered_already_exist );
+    report_content.put( reportFilesKey("Recovered: new files, not present in the checksum (including wrong checksum)",                                files_recovered_new.size()),            json_files_recovered_new );
+    report_content.put( reportFilesKey("Already existing, with correct signature (including recovered but already existing)",                         files_already_exist.size()),            json_already_exist );
+    report_content.put( reportFilesKey("Couldn't write these files, retry.",                                                                          files_error_io.size()),                 json_files_error_io );
+    report_content.put( reportFilesKey("Couldn't delete these shards, but they can be removed safely as they were already recovered",                 shards_error_delete.size()),            json_shards_error_delete );
+    report_content.put( reportFilesKey("Error: checksum (scan)",                                                                                      stats.files_error_checksum),            json_files_error_checksum );
+    report_content.put( reportFilesKey("Error: insufficient shards (scan)",                                                                           stats.files_error_insufficient),        json_files_error_insufficient );
+    report_content.put( reportFilesKey("Error: other (scan)",                                                                                         stats.files_error_other),               json_files_error_other );
+    report_content.put( "Stats (scan)",                                                                                                                                                            json_stats );
 
     Files.writeString( report_restored.toPath(), report_content.toString() );
 
   }
+
+
+  private static String reportFilesKey(String key, int files) {
+    return key + " (" + files + ")";
+  }
+  private static <T> String reportFilesKey(String key, Collection<T> files) {
+    return reportFilesKey(key, files.size());
+  }
+
+
+
+
 
 }
