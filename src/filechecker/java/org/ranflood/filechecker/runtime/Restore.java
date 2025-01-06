@@ -67,6 +67,7 @@ public class Restore {
             e -> e.get( "checksum" ).toString() )
         );
 
+    if (exclude_dirs == null) exclude_dirs = new File[0];
     Set<Path> exclude_set = Arrays.stream(exclude_dirs)
             .map(dir -> Path.of(dir.getAbsolutePath()) )
             .collect(Collectors.toSet());
@@ -217,7 +218,7 @@ public class Restore {
 
 
     /* check all files from checksum */
-    Map< String, String > report_check_content = check(folder, checksum_map, true);
+    Map< String, String > report_check_content = check(folder, checksum_map, true, exclude_set);
 
 
     /* collect and report logs */

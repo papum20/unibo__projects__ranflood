@@ -54,60 +54,86 @@ public class WriteSSSFileTask extends WriteFileTask {
 	public Runnable getRunnableTask() {
 		return () -> {
 
-			log("Task SSS for: " + filePath() + "; signature: " + signature + "; memoryFree: " + Jvm.freeMemory());
+			// in case of OutOfMemoryError, wait and retry with smaller n,k
+			int retries_timeout_ms = 100;
+			int retries_max = 8;	// 2**8 = 256, so will try all values of n until it's too small (<2)
+			int retries_counter = 0;
+			int new_n = sss.n,
+				new_k = sss.k;
 
-			File parentFolder = filePath().getParent().toFile();
-			if ( !parentFolder.exists() ) {
-				synchronized ( filePath() ) {
-					parentFolder.mkdirs();
-				}
-			}
+			while (retries_counter >= retries_max) {
 
-			try {
-				// split with sss
-				//long time_start = System.currentTimeMillis();
-				OriginalFile original_file = sss.getSplitFile(filePath(), content(), Security.hash_fromBase64(signature));
-				//long time_end = System.currentTimeMillis();
-				//System.out.println(filePath() + ", time split: " + (time_end - time_start));
+				log("Task SSS for: " + filePath() + "; signature: " + signature + "; memoryFree: " + Jvm.freeMemory());
 
-				// try to write all shards
-				int shards_created = 0;
-				byte[] shard_content;
-				while(true) {
-
-					shard_content = original_file.iterateShardContent();
-					if(shard_content == null)
-						break;
-
-					Path shard_path = FileNamesGenerator.getUniquePath(filePath().toString());
-
-					try {
-						writeFile(shard_path, shard_content);
-						shards_created++;
-					} catch ( IOException e ) {
-						error( e.getMessage() );
+				File parentFolder = filePath().getParent().toFile();
+				if ( !parentFolder.exists() ) {
+					synchronized ( filePath() ) {
+						parentFolder.mkdirs();
 					}
 				}
 
-				// original file's removal is a single-use task, while this task will be retried in case of error
-				/*
-				// if enough shards weren't created, for any reason, better recreate original file, so it's not lost
-				if(shards_created < sss.k && !filePath().toFile().exists() ) {
-					writeFile(filePath(), content());
+				try {
+					// split with sss
+					//long time_start = System.currentTimeMillis();
+					OriginalFile original_file =
+							(retries_counter > 0)
+							? sss.getSplitFile( filePath(), content(), Security.hash_fromBase64(signature) )
+							: sss.getSplitFile(
+									filePath(), content(), Security.hash_fromBase64(signature),
+									 new_n, new_k);
+					//long time_end = System.currentTimeMillis();
+					//System.out.println(filePath() + ", time split: " + (time_end - time_start));
+
+					// try to write all shards
+					int shards_created = 0;
+					byte[] shard_content;
+					while(true) {
+
+						shard_content = original_file.iterateShardContent();
+						if(shard_content == null)
+							break;
+
+						Path shard_path = FileNamesGenerator.getUniquePath(filePath().toString());
+
+						try {
+							writeFile(shard_path, shard_content);
+							shards_created++;
+						} catch ( IOException e ) {
+							error( e.getMessage() );
+						}
+					}
+
+					// original file's removal is a single-use task, while this task will be retried in case of error
+					/*
+					// if enough shards weren't created, for any reason, better recreate original file, so it's not lost
+					if(shards_created < sss.k && !filePath().toFile().exists() ) {
+						writeFile(filePath(), content());
+					}
+					 */
+
+				} catch (IOException | NoSuchAlgorithmException e ) {
+					error( e.getMessage() );
+				} catch ( InvalidOriginalFileException e ) {
+					// it just means it's a shard and won't be split again
+					// don't log, as there could be a lot of logs, and IO is very expensive
+				} catch ( OutOfMemoryError e ) {
+					// maybe the task will be able to run later
+					error( "Out of memory, when splitting with SSS (try " + retries_counter + "/" + retries_max + "): " + filePath() );
+
+					// retry
+					if (new_n <= 2)
+						break;
+
+					retries_counter++;
+					new_n = (int) Math.ceil(new_n / 2.0);
+					new_k = Math.min(new_n, sss.k);	// keep same k, or lower it if it's larger than n
+					try {
+						Thread.sleep( retries_timeout_ms );
+					} catch ( InterruptedException error ) {
+						error.printStackTrace();
+					}
 				}
-				 */
-
-			} catch (IOException | NoSuchAlgorithmException e ) {
-				error( e.getMessage() );
-			} catch ( InvalidOriginalFileException e ) {
-				// it just means it's a shard and won't be split again
-				// don't log, as there could be a lot of logs, and IO is very expensive
-			} catch ( OutOfMemoryError e ) {
-				// maybe the task will be able to run later
-				error( "Out of memory, when splitting with SSS: " + filePath() );
 			}
-
-
 
 		};
 	}

@@ -36,6 +36,7 @@ import org.sssfile.files.ShardFile;
 
 public class SSSSplitter {
 
+	private final SecureRandom random_generator;
     private final Scheme scheme;
 
 	public final int	n,
@@ -49,7 +50,7 @@ public class SSSSplitter {
 	 * @param k minimum number of shards required to rebuild the original file (0<=k<=n)
 	 */
 	public SSSSplitter(int n, int k) {
-        SecureRandom random_generator = new SecureRandom();
+        random_generator = new SecureRandom();
 		scheme = new Scheme(random_generator, n, k);
 		this.n = n;
 		this.k = k;
@@ -59,17 +60,8 @@ public class SSSSplitter {
 	}
 
 
-	/**
-	 *
-	 * @param path file path
-	 * @param content file content
-	 * @param checksum sha1 checksum of the original file - can be read with {@link OriginalFile}.readHash()
-	 * @return the OriginalFile object
-	 * @throws IOException while reading file content
-	 * @throws InvalidOriginalFileException if the file is a shard
-	 */
-	public OriginalFile getSplitFile(
-			Path path, byte[] content, byte[] checksum
+	private OriginalFile getSplitFile(
+			Path path, byte[] content, byte[] checksum, Scheme scheme
 	) throws IOException, InvalidOriginalFileException {
 
 		if(ShardFile.isValid(content)) {
@@ -79,6 +71,40 @@ public class SSSSplitter {
 
 		Map<Integer, byte[]> parts = scheme.split(content);
 		return new OriginalFile(path, checksum, parts, n, k, generation);
+	}
+
+	/**
+	 *
+	 * @param path file path
+	 * @param content file content
+	 * @param checksum sha1 checksum of the original file - can be read with {@link OriginalFile}.readHash()
+	 * @param n create a new sss {@link Scheme} object with this n
+	 * @param k create a new sss {@link Scheme} object with this k
+	 * @return the OriginalFile object
+	 * @throws IOException while reading file content
+	 * @throws InvalidOriginalFileException if the file is a shard
+	 */
+	public OriginalFile getSplitFile(
+			Path path, byte[] content, byte[] checksum,
+			int n, int k
+	) throws IOException, InvalidOriginalFileException {
+		return getSplitFile(path, content, checksum, new Scheme(random_generator, n, k));
+	}
+
+	/**
+	 * (See {@link SSSSplitter}.getSplitFile)
+	 * Use the default sss {@link Scheme}.
+	 * @param path
+	 * @param content
+	 * @param checksum
+	 * @return
+	 * @throws IOException
+	 * @throws InvalidOriginalFileException
+	 */
+	public OriginalFile getSplitFile(
+			Path path, byte[] content, byte[] checksum
+	) throws IOException, InvalidOriginalFileException {
+		return getSplitFile(path, content, checksum, scheme);
 	}
 
 }

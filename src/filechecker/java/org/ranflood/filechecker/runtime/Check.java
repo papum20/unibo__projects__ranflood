@@ -25,6 +25,7 @@ import com.republicate.json.Json;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -56,7 +57,7 @@ public class Check {
 //										.collect( Collectors.toUnmodifiableMap( s -> s[ 0 ], s -> s[ 1 ] ) ) );
     // first we check if we can find all files
 
-    Map< String, String > reportContent = check(folder, checksumMap, deep);
+    Map< String, String > reportContent = check(folder, checksumMap, deep, null);
 
     Json.Array a = new Json.Array();
     reportContent.forEach( ( key, value ) -> {
@@ -68,7 +69,15 @@ public class Check {
     Files.writeString( report.toPath(), a.toString() );
   }
 
-  protected static Map< String, String > check(File folder, Map<String, String> checksumMap, boolean deep) {
+  /**
+   *
+   * @param folder
+   * @param checksumMap
+   * @param deep
+   * @param exclude_set don't search files inside it. Set to `null` to ignore
+   * @return
+   */
+  protected static Map< String, String > check(File folder, Map<String, String> checksumMap, boolean deep, Set<Path> exclude_set) {
     Map< String, String > reportContent = new HashMap<>();
     for ( Map.Entry< String, String > entry : new HashMap<>( checksumMap ).entrySet() ) {
       try {
@@ -85,16 +94,11 @@ public class Check {
     try {
       if ( deep && !checksumMap.isEmpty() ) {
         HashSet< String > missingSignatures = new HashSet<>( checksumMap.values() );
-        List< Path > files = Files.walk( folder.toPath().toAbsolutePath() )
-                .filter( f -> {
-                  try {
-                    return Files.isRegularFile( f, LinkOption.NOFOLLOW_LINKS ) && !reportContent.containsKey( f.toString() );
-                  } catch ( Exception e ) {
-                    System.err.println( "Problem processing file: " + f + ", " + e.getMessage() );
-                    return false;
-                  }
-                } ).toList();
+
+        List< Path > files = walkFiles(folder.toPath(), reportContent, exclude_set);
+
         for ( Path f : files ) {
+          System.out.println("Checking: " + f.toString());
           try {
             String signature = getFileSignature( f );
             if ( missingSignatures.contains( signature ) ) {
@@ -133,6 +137,38 @@ public class Check {
     }
 
     return reportContent;
+  }
+
+  private static List<Path> walkFiles(Path folder,  Map< String, String > reportContent, Set<Path> exclude_dirs) throws IOException {
+    List< Path > files = new LinkedList<>();
+
+    try ( DirectoryStream<Path> stream = Files.newDirectoryStream(folder.toAbsolutePath()) ) {
+      for (Path file : stream) {
+
+        if ( Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS) && !exclude_dirs.contains(file.toAbsolutePath()) ) {
+          walkFiles(file, reportContent, exclude_dirs);
+        } else {
+          try {
+            if ( Files.isRegularFile( file, LinkOption.NOFOLLOW_LINKS ) && !reportContent.containsKey( file.toString() ) )
+              files.add(file);
+          } catch ( Exception e ) {
+            System.err.println( "Problem processing file: " + file + ", " + e.getMessage() );
+          }
+        }
+
+      }
+    }
+    return files;
+  }
+
+  private static boolean isFileIn(Collection<File> files, File file) {
+    String filePath = file.getAbsolutePath();
+
+    for (File f : files) {
+      if (filePath.startsWith(f.getAbsolutePath()))
+        return true;
+    }
+    return false;
   }
 
 }

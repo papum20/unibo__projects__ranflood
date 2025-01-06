@@ -84,23 +84,20 @@ public class SSSRestorer {
 	/**
 	 * Find all shards in a directory, and group them by original file in `shard_groups`.
 	 */
-	public void findShards(Set<Path> exclude_dirs) throws IOException {
+	public void findShards(Set<Path> exclude_dirs) {
 		logger.start();
 		findShards(root, exclude_dirs);
 		logger.summary();
 	}
 
-	private void findShards(Path dir, Set<Path> exclude_dirs) throws IOException {
+	private void findShards(Path dir, Set<Path> exclude_dirs) {
 
 		try ( DirectoryStream<Path> stream = Files.newDirectoryStream(dir) ) {
+			// this can throw IOException too
 			for (Path file : stream) {
 
 				if ( Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS) && !exclude_dirs.contains(file.toAbsolutePath()) ) {
-					try {
-						findShards(file, exclude_dirs);
-					} catch (IOException e) {
-						System.err.println(e.getMessage());
-					}
+					findShards(file, exclude_dirs);
 					continue;
 				}
 
@@ -125,6 +122,9 @@ public class SSSRestorer {
 				logger.logDebug("New shards of " + shard_groups.get(shard.hashCode()).getPath() + ": " + shard_groups.get(shard.hashCode()).size());
 
 			}
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace();
 		}
 
 	}

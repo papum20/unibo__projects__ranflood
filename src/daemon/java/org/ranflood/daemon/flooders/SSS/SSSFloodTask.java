@@ -136,7 +136,7 @@ public class SSSFloodTask extends FloodTaskGenerator {
 				if ( signature_snapshot == null || signature_snapshot.equals( signature ) ) {
 
 					lock.writeLock().lock();
-System.out.println("Added task for " + file + ", size is " + bytes.length);
+					//System.out.println("Added task for " + file + ", size is " + bytes.length);
 					tasks.add(new WriteSSSFileTask( filePath, bytes, floodMethod(), sss, signature ));
 					lock.writeLock().unlock();
 
