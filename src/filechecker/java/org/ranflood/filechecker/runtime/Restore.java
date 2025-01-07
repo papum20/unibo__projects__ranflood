@@ -58,19 +58,25 @@ public class Restore {
       throw new IOException( "folder " + folder + " does not exist" );
     if ( !Files.isDirectory( folder.toPath() ) )
       throw new IOException( folder + " is not a directory" );
-    Json checksum_json = Json.parse( Files.readString( checksum.toPath() ) );
-    Map< String, String > checksum_map = checksum_json.asArray().
-        stream()
-        .map( e -> ( Json.Object ) e )
-        .collect( Collectors.toMap(
-            e -> e.get( "path" ).toString(),
-            e -> e.get( "checksum" ).toString() )
-        );
 
     if (exclude_dirs == null) exclude_dirs = new File[0];
     Set<Path> exclude_set = Arrays.stream(exclude_dirs)
             .map(dir -> Path.of(dir.getAbsolutePath()) )
             .collect(Collectors.toSet());
+
+    Json checksum_json = Json.parse( Files.readString( checksum.toPath() ) );
+    Map< String, String > checksum_filtered_map = checksum_json.asArray().
+        stream()
+        .map( e -> ( Json.Object ) e )
+        .filter( f -> !isFileIn(
+                exclude_set,
+                folder.toPath().resolve( Path.of(f.get( "path" ).toString()) )
+        ))
+        .collect( Collectors.toMap(
+            e -> e.get( "path" ).toString(),
+            e -> e.get( "checksum" ).toString() )
+        );
+
 
     /* run sss search */
     Path file_log = ( log != null ) ? log.toPath() : null;
@@ -128,7 +134,7 @@ public class Restore {
       }
 
       Path file_path = original_file.left().path.toAbsolutePath();
-      String signature_snapshot = checksum_map.get( file_path.toString() );
+      String signature_snapshot = checksum_filtered_map.get( file_path.toString() );
       String signature_found = null;
 
       // if a file with the same name already exists: if it has the same checksum skip, otherwise write with a new name
@@ -188,7 +194,7 @@ public class Restore {
       }
     }
 
-    sss.logSummary();
+    sss.logRestoreCompleted();
 
     /*  complement files_recovered_already_exist with those files present in the checksum and which are still there
         (although weren't restored)
@@ -198,7 +204,7 @@ public class Restore {
       recovered_inverted.put(recovered.getValue(), recovered.getKey());
     }
 
-    for (Map.Entry<String, String> entry : checksum_map.entrySet()) {
+    for (Map.Entry<String, String> entry : checksum_filtered_map.entrySet()) {
       Path path = Path.of(entry.getKey());
       String signature_found = null;
       if (Files.exists(path) ) {
@@ -218,7 +224,7 @@ public class Restore {
 
 
     /* check all files from checksum */
-    Map< String, String > report_check_content = check(folder, checksum_map, true, exclude_set);
+    Map< String, String > report_check_content = check( folder, new HashMap<>(checksum_filtered_map), exclude_set, file_log, true, true );
 
 
     /* collect and report logs */
@@ -264,6 +270,14 @@ public class Restore {
     );
 
     // check
+    Json.Array json_checksum_filtered = new Json.Array();
+    checksum_filtered_map.forEach( ( key, value ) -> {
+      Json.Object o = new Json.Object();
+      o.put( "path", key );
+      o.put( "checksum", value );
+      json_checksum_filtered.add( o );
+    } );
+
     Json.Array json_report_check = new Json.Array();
     report_check_content.forEach( ( key, value ) -> {
       Json.Object o = new Json.Object();
@@ -307,9 +321,9 @@ public class Restore {
     json_stats.put( "Restored files not written for other errors", original_files_error_get );
 
     Json.Object report_content = new Json.Object();
-    report_content.put( reportFilesKey("Tot: saved in checksum",                                                                                      checksum_map.size()),                   null );
+    report_content.put( reportFilesKey("Tot: saved in checksum (filtered)",                                                                           checksum_filtered_map.size()),          json_checksum_filtered );
     report_content.put( reportFilesKey("Tot: saved in checksum and still present, with correct signature",                                            report_check_content.size()),           json_report_check );
-    report_content.put( reportFilesKey("Total valid files (including recovered and those not corrupted)",                                             report_check_content.size()),           json_report_check );
+    //report_content.put( reportFilesKey("Total valid files (including recovered and those not corrupted)",                                              report_check_content.size()),           json_report_check );
     report_content.put( reportFilesKey("Recovered: present in checksum and file not existing, but now recovered",                                     files_recovered.size()),                json_files_recovered );
     report_content.put( reportFilesKey("Recovered, path conflict: recovered but changed name because a different file with the same name was found",  files_path_conflict),                   json_files_path_conflict );
     report_content.put( reportFilesKey("Recovered, wrong checksum: recovered but changed name because snapshot has a different checksum",             files_wrong_snapshot),                  json_files_wrong_snapshot );
@@ -336,7 +350,16 @@ public class Restore {
   }
 
 
+  private static boolean isFileIn(Collection<Path> files, Path file_absolute) {
+    String filePath = file_absolute.toAbsolutePath().toString();
 
+    for (Path f : files) {
+      //System.out.println("isFileIn: " + file_absolute + " in... " + f + ": " + filePath.startsWith(f.toAbsolutePath().toString()) );
+      if ( filePath.startsWith(f.toAbsolutePath().toString()) )
+        return true;
+    }
+    return false;
+  }
 
 
 }

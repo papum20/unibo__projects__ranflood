@@ -87,6 +87,7 @@ public class SSSRestorer {
 	public void findShards(Set<Path> exclude_dirs) {
 		logger.start();
 		findShards(root, exclude_dirs);
+		logger.logDebug("SSS shards search completed.");
 		logger.summary();
 	}
 
@@ -197,6 +198,10 @@ public class SSSRestorer {
 	public void logSummary() {
 		logger.summary();
 	}
+	public void logRestoreCompleted() {
+		logger.logDebug("Restoring completed.");
+		logSummary();
+	}
 	
 	/**
 	 * Mark a file as deleted, for logging.
@@ -212,6 +217,7 @@ public class SSSRestorer {
 
 	public void loadShardsReportJson(Json json) {
 		shard_groups = RestoredFilesList.fromJson(json);
+		logger.logDebug("Report-shards found and loaded.");
 	}
 
 }
