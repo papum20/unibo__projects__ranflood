@@ -82,6 +82,10 @@ sourceSets {
         java.srcDir 'src/daemon/java'
         runtimeClasspath += compileClasspath += configurations.daemon + sourceSets.common.output
     }
+    ransomware {
+        java.srcDir 'src/tests/java/ransomware'
+        runtimeClasspath += compileClasspath += configurations.client + configurations.daemon + sourceSets.common.output + sourceSets.client.output + sourceSets.daemon.output
+    }
     testsSSS {
         java.srcDir 'src/tests/java/playground/sss'
         runtimeClasspath += compileClasspath += configurations.client + configurations.daemon + sourceSets.common.output + sourceSets.client.output + sourceSets.daemon.output
@@ -171,6 +175,20 @@ task filecheckerJar ( type: Jar ) {
 
 
 /* Test tasks */
+
+task ransomwareJar ( type: Jar ) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes "Implementation-Title": "TestCompare",
+                "Implementation-Version": "0.1",
+                'Main-Class': 'ransomware.Ransomware'
+    }
+    archiveBaseName.set( "Ransomware" )
+    from sourceSets.ransomware.output
+    from {
+        sourceSets.ransomware.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
 
 task testCompareJar ( type: Jar ) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
