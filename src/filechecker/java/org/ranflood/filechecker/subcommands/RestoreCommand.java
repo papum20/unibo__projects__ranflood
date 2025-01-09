@@ -72,10 +72,10 @@ public class RestoreCommand implements Callable< Integer > {
   private Boolean delete = false;
 
   @CommandLine.Option(
-      names = { "-l", "--logfile" },
-      description = "Enable more logs and specify the log file where to print them."
+          names = { "--dry-run" },
+          description = "Don't create, just log"
   )
-  private File log_file = null;
+  private Boolean dry_run = false;
 
   @CommandLine.Option(
           names = { "-e", "--exclude" },
@@ -83,11 +83,32 @@ public class RestoreCommand implements Callable< Integer > {
   )
   private File[] exclude_dirs = null;
 
+  @CommandLine.Option(
+      names = { "-l", "--logfile" },
+      description = "Enable more logs and specify the log file where to print them."
+  )
+  private File log_file = null;
+
+  @CommandLine.Option(
+          names = { "-w", "--windows-mount" },
+          description = "Use when mounting a windows partition on a linux system."
+  )
+  private String windows_mount = null;
+
+  @CommandLine.Option(
+          names = { "--windows-letter" },
+          description = "Windows drive letter - use when mounting a windows partition on a linux system."
+  )
+  private String windows_letter = null;
+
 
   @Override
   public Integer call() {
     try {
-      Restore.run( checksumFile, folder, report_shards_file, report_restored_file, exclude_dirs, delete, log_file, debug );
+      Restore.run( checksumFile, folder, report_shards_file, report_restored_file, exclude_dirs,
+              delete, dry_run,
+              windows_mount, windows_letter,
+              log_file, debug );
       System.out.println( "Shards report of the check of folder " + folder + " saved in file " + report_shards_file.getAbsolutePath() );
       System.out.println( "Restoration report of the check of folder " + folder + " saved in file " + report_restored_file.getAbsolutePath() );
     } catch ( IOException e ) {

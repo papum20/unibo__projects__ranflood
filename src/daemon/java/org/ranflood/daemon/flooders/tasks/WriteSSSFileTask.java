@@ -61,9 +61,11 @@ public class WriteSSSFileTask extends WriteFileTask {
 			int new_n = sss.n,
 				new_k = sss.k;
 
-			while (retries_counter >= retries_max) {
+			while (retries_counter <= retries_max) {
 
-				log("Task SSS for: " + filePath() + "; signature: " + signature + "; memoryFree: " + Jvm.freeMemory());
+				// logs
+				//log( "Task SSS for: " + filePath() + "; signature: " + signature + "; retries_counter: " + retries_counter
+				//		+ "; memoryFree: " + Jvm.freeMemory() );
 
 				File parentFolder = filePath().getParent().toFile();
 				if ( !parentFolder.exists() ) {
@@ -110,6 +112,9 @@ public class WriteSSSFileTask extends WriteFileTask {
 						writeFile(filePath(), content());
 					}
 					 */
+
+					// completed successfully
+					break;
 
 				} catch (IOException | NoSuchAlgorithmException e ) {
 					error( e.getMessage() );

@@ -27,6 +27,7 @@ import org.ranflood.daemon.flooders.FlooderException;
 import org.ranflood.daemon.flooders.tasks.*;
 import org.sssfile.SSSSplitter;
 import org.ranflood.daemon.flooders.SnapshotException;
+import org.sssfile.files.ShardFile;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -38,7 +39,7 @@ import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.ranflood.common.RanfloodLogger.error;
-
+import static org.ranflood.common.RanfloodLogger.log;
 
 
 public class SSSFloodTask extends FloodTaskGenerator {
@@ -79,6 +80,10 @@ public class SSSFloodTask extends FloodTaskGenerator {
 		}
 		lock.readLock().lock();
 		List< FileTask > t = new LinkedList<>(tasks);
+
+		// logs
+		//for (FileTask ft : t) log("Get file tasks: " + ft.filePath().toString());
+
 		lock.readLock().unlock();
 		if ( t.isEmpty() && taskListResponseRetriesCounter < maxTaskListResponseRetries ) {
 			taskListResponseRetriesCounter++;
@@ -132,13 +137,29 @@ public class SSSFloodTask extends FloodTaskGenerator {
 				}
 
 				// only encrypt if signature still valid (so ransomware didn't corrupt the file),
-				// or if we don't have a signature (didn't take a snapshot): will work anyway
-				if ( signature_snapshot == null || signature_snapshot.equals( signature ) ) {
+				// or if we don't have a signature (didn't take a snapshot): will work anyway,
+				// and skip shards
+				if ( (signature_snapshot == null || signature_snapshot.equals( signature ))
+					&& !ShardFile.isValid(bytes)
+				) {
+
+					// logs
+					//String log_msg = "Added task for " + file + ", size is " + bytes.length + "\n";
+					//lock.readLock().lock();
+					//log_msg += "Tasks before, for: " + file + "\n";
+					//for (FileTask ft : tasks) log_msg += " - " + ft.filePath().toString() + "\n";
+					//lock.readLock().unlock();
 
 					lock.writeLock().lock();
-					//System.out.println("Added task for " + file + ", size is " + bytes.length);
 					tasks.add(new WriteSSSFileTask( filePath, bytes, floodMethod(), sss, signature ));
 					lock.writeLock().unlock();
+
+					// logs
+					//lock.readLock().lock();
+					//log_msg += "Tasks after, for: " + file + "\n";
+					//for (FileTask ft : tasks) log_msg += " - " + ft.filePath().toString() + "\n";
+					//lock.readLock().unlock();
+					//log(log_msg);
 
 					// remove original file
 					if (remove_originals) {

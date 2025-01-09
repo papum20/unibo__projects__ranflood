@@ -163,7 +163,6 @@ public class SSSRestorer {
 					"Can't restore file with only " + original_file.parts.size() + " / " + original_file.k + " parts: " + original_file.path);
 		}
 
-		logger.logDebug("Recovering file: " + original_file.path);
 		scheme = new Scheme(random_generator, original_file.n, original_file.k);
 
 		// when possible, reduce the time of execution
