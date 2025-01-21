@@ -142,7 +142,7 @@ public class Restore {
       String signature_computed = null;
 
       // if a file with the same name already exists: if it has the same checksum skip, otherwise write with a new name
-      boolean file_exists = Files.exists( file_path );
+      boolean file_exists = Files.exists( file_path_converted );
       if ( file_exists ) {
         try {
           signature_computed = Utils.getFileSignature( file_path );
