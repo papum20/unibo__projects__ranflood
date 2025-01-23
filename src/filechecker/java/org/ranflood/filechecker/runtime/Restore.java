@@ -145,7 +145,7 @@ public class Restore {
       boolean file_exists = Files.exists( file_path_converted );
       if ( file_exists ) {
         try {
-          signature_computed = Utils.getFileSignature( file_path );
+          signature_computed = Utils.getFileSignature( file_path_converted );
         } catch ( NoSuchAlgorithmException | Utils.OutOfMemoryException e ) {
           System.err.println( "Error computing the signature of file " + file_path + " : " + e.getMessage() );
         }
@@ -168,38 +168,38 @@ public class Restore {
         try {
           // change name if path or snapshot conflict
           if ((signature_checksum != null && !signature_checksum.equals(signature_header))) {
-            file_path = FileNamesGenerator.getUniquePath(file_path_converted.toString());  // also avoid other name conflicts for already existing files
+            file_path_converted = FileNamesGenerator.getUniquePath(file_path_converted.toString());  // also avoid other name conflicts for already existing files
             if (!dry_run)
-              Files.write(file_path, original_file.right());
+              Files.write(file_path_converted, original_file.right());
 
             // register for report after writing, so that we only register an error in case an exception occurs
-            recovered_wrong_snapshot.add(new Pair<>(original_file.left().path, file_path));
-            recovered_new.put(file_path, signature_header);
-            System.out.println("File exists with wrong snapshot, written to " + file_path);
+            recovered_wrong_snapshot.add(new Pair<>(original_file.left().path, file_path_converted));
+            recovered_new.put(file_path_converted, signature_header);
+            System.out.println("File exists with wrong snapshot, written to " + file_path_converted);
           } else if (file_exists) {
-            file_path = FileNamesGenerator.getUniquePath(file_path.toString());
+            file_path_converted = FileNamesGenerator.getUniquePath(file_path_converted.toString());
             if (!dry_run)
-              Files.write(file_path, original_file.right());
+              Files.write(file_path_converted, original_file.right());
 
-            recovered_path_conflict.add(new Pair<>(original_file.left().path, file_path));
-            recovered.put(file_path, signature_header);
-            System.out.println("Conflict, written to " + file_path);
+            recovered_path_conflict.add(new Pair<>(original_file.left().path, file_path_converted));
+            recovered.put(file_path_converted, signature_header);
+            System.out.println("Conflict, written to " + file_path_converted);
           } else {
             if (!dry_run)
-              Files.write(file_path, original_file.right());
+              Files.write(file_path_converted, original_file.right());
 
-            recovered.put(file_path, signature_header);
-            System.out.println("Written to " + file_path);
+            recovered.put(file_path_converted, signature_header);
+            System.out.println("Written to " + file_path_converted);
           }
         } catch (IOException e) {
           error_io.put(original_file.left().path, signature_header);
-          System.err.println("IO Error with file " + file_path + " : " + e.getMessage());
+          System.err.println("IO Error with file " + file_path_converted + " : " + e.getMessage());
           // don't delete shards if original file is missing and couldn't be written
           continue;
         }
       } else {
         // don't write only if file with same checksum was found
-        recovered_already_exist.put(file_path, signature_checksum);
+        recovered_already_exist.put(file_path_converted, signature_checksum);
       }
 
 
@@ -208,7 +208,7 @@ public class Restore {
           shards_tot++;
           try {
             Files.delete( shard_path );
-            sss.logDelete(shard_path, file_path, true);
+            sss.logDelete(shard_path, file_path_converted, true);
           } catch ( IOException e ) {
             error_delete_shard.put( shard_path, signature_header );
           }
