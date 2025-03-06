@@ -136,10 +136,11 @@ public class SSSFloodTask extends FloodTaskGenerator {
 					//throw new FlooderException( "Could not find a snapshot of file " + file.getAbsolutePath());
 				}
 
-				// only encrypt if signature still valid (so ransomware didn't corrupt the file),
-				// or if we don't have a signature (didn't take a snapshot): will work anyway,
-				// and skip shards
-				if ( (signature_snapshot == null || signature_snapshot.equals( signature ))
+				// Only encrypt if signature still valid (so ransomware didn't corrupt the file);
+				// If we don't have a signature, it would work anyway, but would also encrypt ransomware's files, so...
+				// if we don't have a signature: only encrypt if we aren't using a snapshooter (i.e. it's empty).
+				// Shards are always skipped.
+				if ( ( SSSSnapshooter.isEmpty() || (signature_snapshot != null && signature_snapshot.equals( signature ) ))
 					&& !ShardFile.isValid(bytes)
 				) {
 
