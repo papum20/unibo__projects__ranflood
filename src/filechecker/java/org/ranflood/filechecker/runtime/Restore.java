@@ -88,7 +88,7 @@ public class Restore {
       sss.loadShardsReportJson(report_shards_json);
     } else {
       sss.findShards(exclude_set);
-      Json.Array shards_json = sss.getShardsReportJson();
+      Json.Object shards_json = sss.getShardsReportJson();
       Files.writeString( report_shards.toPath(), shards_json.toString() );
     }
 

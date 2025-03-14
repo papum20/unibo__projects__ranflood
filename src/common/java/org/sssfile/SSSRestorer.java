@@ -23,9 +23,7 @@
 
 import com.republicate.json.Json;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -33,10 +31,8 @@ import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import com.codahale.shamir.Scheme;
-import org.ranflood.common.RanfloodLogger;
 import org.ranflood.common.utils.Pair;
 import org.ranflood.util.Collections;
 import org.sssfile.exceptions.InvalidOriginalFileException;
@@ -49,7 +45,6 @@ import org.sssfile.files.RestoredFilesList;
 import org.sssfile.util.LoggerRestore;
 import org.sssfile.util.LoggerResult;
 import org.sssfile.util.Security;
-import org.zeromq.Utils;
 
 
 public class SSSRestorer {
@@ -62,9 +57,16 @@ public class SSSRestorer {
 
 	// group shards by original file name
 	private RestoredFilesList shard_groups;
+	private final LinkedList<String> corrupted_shards		= new LinkedList<>();
+	private final LinkedList<String> corrupted_originals	= new LinkedList<>();
 
 	private Iterator<OriginalFileEntry> iterator = null;
 	private int iterator_count = 0;
+
+	private final String REGEX_SHARD = ".*_shard\\d+.*";
+	private final String JSON_KEY_VALID_SHARDS			= "Valid shards";
+	private final String JSON_KEY_CORRUPTED_ORIGINALS	= "Corrupted originals";
+	private final String JSON_KEY_CORRUPTED_SHARDS		= "Corrupted shards";
 
 
 
@@ -107,6 +109,8 @@ public class SSSRestorer {
 					shard = ShardFile.fromFile(file);
 				} catch (InvalidShardException e) {
 					logger.foundShard(file, false, -1);
+					if(file.toString().matches(REGEX_SHARD)) corrupted_shards.add(file.toAbsolutePath().toString());
+					else corrupted_originals.add(file.toAbsolutePath().toString());
 					continue;
 				} catch (IOException e) {
 					logger.fileErrorReading(file);
@@ -210,12 +214,34 @@ public class SSSRestorer {
 	}
 
 
-	public Json.Array getShardsReportJson() {
-		return shard_groups.toJsonArray();
+	/**
+	 * Get shards and corrupted files report;
+	 * then clear corrupted shards and originals (to free memory).
+	 * @return
+	 */
+	public Json.Object getShardsReportJson() {
+
+		Json.Object report_shards = new Json.Object();
+
+		Json.Array shard_groups_array = shard_groups.toJsonArray();
+		Json.Array corrupted_shards_array = new Json.Array();
+		corrupted_shards.forEach(corrupted_shards_array::push);
+		Json.Array corrupted_originals_array = new Json.Array();
+		corrupted_originals.forEach(corrupted_originals_array::push);
+
+		report_shards.put(JSON_KEY_VALID_SHARDS			+ "(" + shard_groups_array.size()	+ ")", shard_groups_array);
+		report_shards.put(JSON_KEY_CORRUPTED_SHARDS		+ "(" + corrupted_shards.size()		+ ")", corrupted_shards_array);
+		report_shards.put(JSON_KEY_CORRUPTED_ORIGINALS	+ "(" + corrupted_originals.size()	+ ")", corrupted_originals_array);
+
+		//corrupted_originals.clear();
+		//corrupted_shards.clear();
+
+		return report_shards;
 	}
 
 	public void loadShardsReportJson(Json json) {
-		shard_groups = RestoredFilesList.fromJson(json);
+		Json.Array shards_groups_json = ((Json.Object)json).getArray(JSON_KEY_VALID_SHARDS);
+		shard_groups = RestoredFilesList.fromJson(shards_groups_json);
 		logger.logDebug("Report-shards found and loaded.");
 	}
 

@@ -31,7 +31,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 
-
 public class LoggerRestore {
 
 	// where to print restoration report
@@ -45,6 +44,8 @@ public class LoggerRestore {
 
 	/* implementation */
 	protected LocalDateTime time_start;
+
+	private final String REGEX_SHARD = ".*_shard\\d+.*";
 
 
 
@@ -257,6 +258,11 @@ public class LoggerRestore {
 
 		stats.n_analyzed++;
 		if(valid) stats.n_shards_valid++;
+		else if(path.toString().matches(REGEX_SHARD)) {
+			stats.n_corrupted_shards++;
+		} else {
+			stats.n_corrupted_originals++;
+		}
 		if(debug_restore) {
 			String msg = "Analyzed shard: " + path + "; generation = " + generation + "; valid shard = " + valid;
 			logDebug(msg);

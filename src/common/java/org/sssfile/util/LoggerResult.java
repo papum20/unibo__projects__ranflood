@@ -38,6 +38,9 @@ public class LoggerResult {
 	public int n_files_unrecoverable	= 0;
 	public int n_shards_deleted		    = 0;
 	public int n_shards_valid			= 0;
+	public int n_corrupted_shards		= 0;
+	// including both tracked and untracked files
+	public int n_corrupted_originals	= 0;
 
 	/* Restored files, for report */
 	public final FileInfoList files_recovered			= new FileInfoList();
