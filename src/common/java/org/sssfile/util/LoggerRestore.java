@@ -260,8 +260,6 @@ public class LoggerRestore {
 		if(valid) stats.n_shards_valid++;
 		else if(path.toString().matches(REGEX_SHARD)) {
 			stats.n_corrupted_shards++;
-		} else {
-			stats.n_corrupted_originals++;
 		}
 		if(debug_restore) {
 			String msg = "Analyzed shard: " + path + "; generation = " + generation + "; valid shard = " + valid;

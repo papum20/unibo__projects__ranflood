@@ -58,7 +58,6 @@ public class SSSRestorer {
 	// group shards by original file name
 	private RestoredFilesList shard_groups;
 	private final LinkedList<String> corrupted_shards		= new LinkedList<>();
-	private final LinkedList<String> corrupted_originals	= new LinkedList<>();
 
 	private Iterator<OriginalFileEntry> iterator = null;
 	private int iterator_count = 0;
@@ -110,7 +109,6 @@ public class SSSRestorer {
 				} catch (InvalidShardException e) {
 					logger.foundShard(file, false, -1);
 					if(file.toString().matches(REGEX_SHARD)) corrupted_shards.add(file.toAbsolutePath().toString());
-					else corrupted_originals.add(file.toAbsolutePath().toString());
 					continue;
 				} catch (IOException e) {
 					logger.fileErrorReading(file);
@@ -227,11 +225,9 @@ public class SSSRestorer {
 		Json.Array corrupted_shards_array = new Json.Array();
 		corrupted_shards.forEach(corrupted_shards_array::push);
 		Json.Array corrupted_originals_array = new Json.Array();
-		corrupted_originals.forEach(corrupted_originals_array::push);
 
 		report_shards.put(JSON_KEY_VALID_SHARDS			+ "(" + shard_groups_array.size()	+ ")", shard_groups_array);
 		report_shards.put(JSON_KEY_CORRUPTED_SHARDS		+ "(" + corrupted_shards.size()		+ ")", corrupted_shards_array);
-		report_shards.put(JSON_KEY_CORRUPTED_ORIGINALS	+ "(" + corrupted_originals.size()	+ ")", corrupted_originals_array);
 
 		//corrupted_originals.clear();
 		//corrupted_shards.clear();
