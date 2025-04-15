@@ -21,29 +21,30 @@
 
  package org.sssfile;
 
+import com.republicate.json.Json;
+
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.Iterator;
+import java.util.*;
 
 import com.codahale.shamir.Scheme;
-import org.ranflood.common.RanfloodLogger;
 import org.ranflood.common.utils.Pair;
+import org.ranflood.util.Collections;
 import org.sssfile.exceptions.InvalidOriginalFileException;
 import org.sssfile.exceptions.InvalidShardException;
 import org.sssfile.exceptions.UnrecoverableOriginalFileException;
 import org.sssfile.files.OriginalFile;
 import org.sssfile.files.ShardFile;
+import org.sssfile.files.RestoredFilesList.OriginalFileEntry;
 import org.sssfile.files.RestoredFilesList;
 import org.sssfile.util.LoggerRestore;
 import org.sssfile.util.LoggerResult;
 import org.sssfile.util.Security;
-import org.zeromq.Utils;
 
 
 public class SSSRestorer {
@@ -55,10 +56,16 @@ public class SSSRestorer {
 	private final Path root;
 
 	// group shards by original file name
-	private final RestoredFilesList shard_groups;
+	private RestoredFilesList shard_groups;
+	private final LinkedList<String> corrupted_shards		= new LinkedList<>();
 
-	private Iterator<OriginalFile> iterator = null;
+	private Iterator<OriginalFileEntry> iterator = null;
 	private int iterator_count = 0;
+
+	private final String REGEX_SHARD = ".*_shard\\d+.*";
+	private final String JSON_KEY_VALID_SHARDS			= "Valid shards";
+	private final String JSON_KEY_CORRUPTED_ORIGINALS	= "Corrupted originals";
+	private final String JSON_KEY_CORRUPTED_SHARDS		= "Corrupted shards";
 
 
 
@@ -78,23 +85,21 @@ public class SSSRestorer {
 	/**
 	 * Find all shards in a directory, and group them by original file in `shard_groups`.
 	 */
-	public void findShards() throws IOException {
+	public void findShards(Set<Path> exclude_dirs) {
 		logger.start();
-		findShards(root);
+		findShards(root, exclude_dirs);
+		logger.logDebug("SSS shards search completed.");
 		logger.summary();
 	}
 
-	private void findShards(Path dir) throws IOException {
+	private void findShards(Path dir, Set<Path> exclude_dirs) {
 
 		try ( DirectoryStream<Path> stream = Files.newDirectoryStream(dir) ) {
+			// this can throw IOException too
 			for (Path file : stream) {
 
-				if (Files.isDirectory(file)) {
-					try {
-						findShards(file);
-					} catch (IOException e) {
-						System.err.println(e.getMessage());
-					}
+				if ( Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS) && !exclude_dirs.contains(file.toAbsolutePath()) ) {
+					findShards(file, exclude_dirs);
 					continue;
 				}
 
@@ -102,7 +107,8 @@ public class SSSRestorer {
 				try {
 					shard = ShardFile.fromFile(file);
 				} catch (InvalidShardException e) {
-					logger.foundShard(file, false);
+					logger.foundShard(file, false, -1);
+					if(file.toString().matches(REGEX_SHARD)) corrupted_shards.add(file.toAbsolutePath().toString());
 					continue;
 				} catch (IOException e) {
 					logger.fileErrorReading(file);
@@ -115,10 +121,13 @@ public class SSSRestorer {
 
 				shard_groups.addShard(shard);
 
-				logger.foundShard(shard.path, true);
-				logger.logDebug("New shards of " + shard_groups.get(shard.hashCode()).path + ": " + shard_groups.get(shard.hashCode()).parts.size());
+				logger.foundShard(shard.path, true, shard.generation);
+				logger.logDebug("New shards of " + shard_groups.get(shard.hashCode()).getPath() + ": " + shard_groups.get(shard.hashCode()).size());
 
 			}
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace();
 		}
 
 	}
@@ -144,8 +153,11 @@ public class SSSRestorer {
 			iterator = null;
 			return null;
 		}
-		OriginalFile original_file = iterator.next();
 		iterator_count++;
+		OriginalFileEntry entry = iterator.next();
+		OriginalFile original_file = entry.getOriginalFile();
+
+		logger.logDebug("Restoring file: " + original_file.path + "; shard files: " + entry.size() + "; valid shards: " + original_file.parts.size());
 
 		if(original_file.parts.size() < original_file.k) {
 			logger.fileErrorUnrecoverable(original_file.path, original_file.k, original_file.parts.size());
@@ -153,14 +165,16 @@ public class SSSRestorer {
 					"Can't restore file with only " + original_file.parts.size() + " / " + original_file.k + " parts: " + original_file.path);
 		}
 
-		logger.logDebug("Recovering file: " + original_file.path);
 		scheme = new Scheme(random_generator, original_file.n, original_file.k);
-		byte[] recovered = scheme.join(original_file.parts);
 
+		// when possible, reduce the time of execution
+		LinkedHashMap<Integer, byte[]> parts = Collections.subset(original_file.parts, original_file.k);
+		byte[] recovered = scheme.join(parts);
+		
 		if(!original_file.isValid(recovered)) {
 			String hash_found;
             hash_found = Security.hashBytesB64(recovered);
-            logger.fileErrorBadHash(original_file, hash_found );
+            logger.fileErrorBadHash(original_file, hash_found);
 			throw new InvalidOriginalFileException(
 					"Restored checksum doesn't match (got " + original_file.getHashBase64() + " , found " + hash_found + " ): " + original_file.path);
 		}
@@ -181,5 +195,50 @@ public class SSSRestorer {
 		return logger.getStats();
 	}
 
+
+	public void logSummary() {
+		logger.summary();
+	}
+	public void logRestoreCompleted() {
+		logger.logDebug("Restoring completed.");
+		logSummary();
+	}
+	
+	/**
+	 * Mark a file as deleted, for logging.
+	 */
+	public void logDelete(Path path_shard, Path path_original, boolean success) {
+		logger.deleteShard(path_shard, path_original, success);
+	}
+
+
+	/**
+	 * Get shards and corrupted files report;
+	 * then clear corrupted shards and originals (to free memory).
+	 * @return
+	 */
+	public Json.Object getShardsReportJson() {
+
+		Json.Object report_shards = new Json.Object();
+
+		Json.Array shard_groups_array = shard_groups.toJsonArray();
+		Json.Array corrupted_shards_array = new Json.Array();
+		corrupted_shards.forEach(corrupted_shards_array::push);
+		Json.Array corrupted_originals_array = new Json.Array();
+
+		report_shards.put(JSON_KEY_VALID_SHARDS			+ "(" + shard_groups_array.size()	+ ")", shard_groups_array);
+		report_shards.put(JSON_KEY_CORRUPTED_SHARDS		+ "(" + corrupted_shards.size()		+ ")", corrupted_shards_array);
+
+		//corrupted_originals.clear();
+		//corrupted_shards.clear();
+
+		return report_shards;
+	}
+
+	public void loadShardsReportJson(Json json) {
+		Json.Array shards_groups_json = ((Json.Object)json).getArray(JSON_KEY_VALID_SHARDS);
+		shard_groups = RestoredFilesList.fromJson(shards_groups_json);
+		logger.logDebug("Report-shards found and loaded.");
+	}
 
 }

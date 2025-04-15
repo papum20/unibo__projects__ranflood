@@ -30,9 +30,12 @@ import java.util.*;
 
 public class SSSSnapshooter extends Snapshooter {
 
+	private static boolean IS_EMPTY;
+
 
 	private SSSSnapshooter() {
-
+		super();
+		IS_EMPTY = OnTheFlySnapshooter.listSnapshots().isEmpty();
 	}
 
 	static void takeSnapshot( Path filePath ) throws SnapshotException {
@@ -45,6 +48,10 @@ public class SSSSnapshooter extends Snapshooter {
 
 	static List< Path > listSnapshots() {
 		return OnTheFlySnapshooter.listSnapshots();
+	}
+
+	static boolean isEmpty() {
+		return IS_EMPTY;
 	}
 
 	static String getSnapshot( Path snapshotParent, Path filepath ) throws SnapshotException {

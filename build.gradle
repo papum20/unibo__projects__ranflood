@@ -82,6 +82,14 @@ sourceSets {
         java.srcDir 'src/daemon/java'
         runtimeClasspath += compileClasspath += configurations.daemon + sourceSets.common.output
     }
+    ransomware {
+        java.srcDir 'src/tests/java/ransomware'
+        runtimeClasspath += compileClasspath += configurations.client + configurations.daemon + sourceSets.common.output + sourceSets.client.output + sourceSets.daemon.output
+    }
+    testsSSS {
+        java.srcDir 'src/tests/java/playground/sss'
+        runtimeClasspath += compileClasspath += configurations.client + configurations.daemon + sourceSets.common.output + sourceSets.client.output + sourceSets.daemon.output
+    }
     tests {
         java.srcDir 'src/tests/java'
         runtimeClasspath += compileClasspath += configurations.client + configurations.daemon + sourceSets.common.output + sourceSets.client.output + sourceSets.daemon.output
@@ -164,6 +172,68 @@ task filecheckerJar ( type: Jar ) {
         sourceSets.filechecker.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 }
+
+
+/* Test tasks */
+
+task ransomwareJar ( type: Jar ) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes "Implementation-Title": "TestCompare",
+                "Implementation-Version": "0.1",
+                'Main-Class': 'ransomware.Ransomware'
+    }
+    archiveBaseName.set( "Ransomware" )
+    from sourceSets.ransomware.output
+    from {
+        sourceSets.ransomware.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+task testCompareJar ( type: Jar ) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes "Implementation-Title": "TestCompare",
+                "Implementation-Version": "0.1",
+                'Main-Class': 'playground.sss.compare.TestCompare'
+    }
+    archiveBaseName.set( "testCompare" )
+    from sourceSets.testsSSS.output
+    from {
+        sourceSets.tests.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+task testSSSJar ( type: Jar ) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes "Implementation-Title": "TestCompare",
+                "Implementation-Version": "0.1",
+                'Main-Class': 'playground.sss.TestSSS'
+    }
+    archiveBaseName.set( "testSSS" )
+    from sourceSets.testsSSS.output
+    from {
+        sourceSets.tests.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+task testSSS_AESJar ( type: Jar ) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes "Implementation-Title": "TestCompare",
+                "Implementation-Version": "0.1",
+                'Main-Class': 'playground.sss.TestSSS_AES'
+    }
+    archiveBaseName.set( "testSSS_AES" )
+    from sourceSets.testsSSS.output
+    from {
+        sourceSets.tests.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+/* END of Test tasks */
+
 
 jar {
     enabled = false // this avoids creating an empty "project" jar file

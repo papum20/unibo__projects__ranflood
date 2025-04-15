@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Base64;
 
 import org.sssfile.exceptions.InvalidShardException;
 import org.sssfile.util.IO;
@@ -156,10 +157,10 @@ public class ShardFile {
 			k						= IO.readChannel( channel, Sections.LEN_K			).flip().getInt();
 			generation				= IO.readChannel( channel, Sections.LEN_GENERATION	).flip().getLong();
 			key						= IO.readChannel( channel, Sections.LEN_KEY			).flip().getInt();
-			hash_original_file		= IO.readChannel( channel, Sections.LEN_HASH ).array();
-			hash_shard				= IO.readChannel( channel, Sections.LEN_HASH ).array();
+			hash_original_file		= IO.readChannel( channel, Sections.LEN_HASH		).array();
+			hash_shard				= IO.readChannel( channel, Sections.LEN_HASH		).array();
 			original_path_len		= IO.readChannel( channel, Sections.LEN_ORIGINAL_PATH_LEN ).flip().getInt();
-			original_path			= IO.readChannel( channel, original_path_len ).array();
+			original_path			= IO.readChannel( channel, original_path_len		).array();
 			shard	= IO.readChannel( channel,
 					(int) path.toFile().length() - Sections.OFFSET_SHARD(original_path_len)
 			).array();

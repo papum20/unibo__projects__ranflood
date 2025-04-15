@@ -31,7 +31,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 
-
 public class LoggerRestore {
 
 	// where to print restoration report
@@ -45,6 +44,8 @@ public class LoggerRestore {
 
 	/* implementation */
 	protected LocalDateTime time_start;
+
+	private final String REGEX_SHARD = ".*_shard\\d+.*";
 
 
 
@@ -139,6 +140,7 @@ public class LoggerRestore {
 	public void summary() {
 
 		LocalDateTime now = LocalDateTime.now();
+		if (time_start == null) time_start = now;
 		Duration time_elapsed = Duration.between( time_start, now );
 		String msg =
 			"--- Summary ---\n" +
@@ -161,14 +163,14 @@ public class LoggerRestore {
 
 	/* on original files */
 
-	public void deleteShard(Path path, boolean success) {
+	public void deleteShard(Path path_shard, Path path_original, boolean success) {
 
 		if(success) stats.n_shards_deleted++;
 			
 		if(debug_restore) {
 			String msg = success
-				? "[Deleted]\tShard deleted: " + path
-				: "[Error]\tCould not delete shard, IO exception: " + path;
+				? "[Deleted]\tShard deleted: " + path_shard + " for " + path_original
+				: "[Error]\tCould not delete shard, IO exception: " + path_original;
 			logLine(msg);
 			report(msg);
 		}
@@ -252,12 +254,15 @@ public class LoggerRestore {
 			logDebug(msg);
 		}
 	}
-	public void foundShard(Path path, boolean valid) {
+	public void foundShard(Path path, boolean valid, long generation) {
 
 		stats.n_analyzed++;
 		if(valid) stats.n_shards_valid++;
+		else if(path.toString().matches(REGEX_SHARD)) {
+			stats.n_corrupted_shards++;
+		}
 		if(debug_restore) {
-			String msg = "Analyzed shard: " + path + "; valid shard = " + valid;
+			String msg = "Analyzed shard: " + path + "; generation = " + generation + "; valid shard = " + valid;
 			logDebug(msg);
 		}
 	}

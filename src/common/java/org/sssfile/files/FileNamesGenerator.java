@@ -54,7 +54,7 @@ public class FileNamesGenerator {
 		do {
 			INSTANCE.counter++;
 		} while( Files.exists(Path.of(name + (INSTANCE.counter - 1) + ext)) );
-		return Path.of(name + (INSTANCE.counter - 1) + ext);
+		return Path.of(name + "_shard" + (INSTANCE.counter - 1) + ext);
 	}
 
 	/**

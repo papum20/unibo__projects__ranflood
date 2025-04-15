@@ -43,19 +43,25 @@ public class RestoreCommand implements Callable< Integer > {
 
   @CommandLine.Parameters(
       index = "1",
-      description = "the path to the report file"
+      description = "the path to the report file (report on found shards) - if it already exists, it will be used, otherwise it will be created"
   )
-  private File report_file;
+  private File report_shards_file;
 
   @CommandLine.Parameters(
       index = "2",
+      description = "the path to the report file (report after restoration)"
+  )
+  private File report_restored_file;
+
+  @CommandLine.Parameters(
+      index = "3",
       description = "the path to the root folder of the files to check"
   )
   private File folder;
 
   @CommandLine.Option(
       names = { "--debug" },
-      description = "If also specified --logfile, print more debugging logs."
+      description = "If --logfile was also used, print more debugging logs."
   )
   private Boolean debug = false;
 
@@ -66,20 +72,48 @@ public class RestoreCommand implements Callable< Integer > {
   private Boolean delete = false;
 
   @CommandLine.Option(
+          names = { "--dry-run" },
+          description = "Don't create, just log"
+  )
+  private Boolean dry_run = false;
+
+  @CommandLine.Option(
+          names = { "-e", "--exclude" },
+          description = "Exclude dirs. Can repeat to indicate more exclusions."
+  )
+  private File[] exclude_dirs = null;
+
+  @CommandLine.Option(
       names = { "-l", "--logfile" },
       description = "Enable more logs and specify the log file where to print them."
   )
   private File log_file = null;
 
+  @CommandLine.Option(
+          names = { "-w", "--windows-mount" },
+          description = "Use when mounting a windows partition on a linux system."
+  )
+  private String windows_mount = null;
+
+  @CommandLine.Option(
+          names = { "--windows-letter" },
+          description = "Windows drive letter - use when mounting a windows partition on a linux system."
+  )
+  private String windows_letter = null;
+
 
   @Override
   public Integer call() {
     try {
-      Restore.run( checksumFile, folder, report_file, delete, log_file, debug );
-      System.out.println( "Report of the check of folder " + folder + " saved in file " + report_file.getAbsolutePath() );
+      Restore.run( checksumFile, folder, report_shards_file, report_restored_file, exclude_dirs,
+              delete, dry_run,
+              windows_mount, windows_letter,
+              log_file, debug );
+      System.out.println( "Shards report of the check of folder " + folder + " saved in file " + report_shards_file.getAbsolutePath() );
+      System.out.println( "Restoration report of the check of folder " + folder + " saved in file " + report_restored_file.getAbsolutePath() );
     } catch ( IOException e ) {
       e.printStackTrace();
-      System.err.println( "Problem writing the report, " + e.getMessage() );
+      System.err.println( "Problem writing a report, " + e.getMessage() );
     }
     return 0;
   }

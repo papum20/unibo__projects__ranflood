@@ -69,11 +69,10 @@ public class OriginalFile {
 	}
 
 
-	public void addPart(Integer part_number, byte[] part) {
+	public void addShard(Path shard_path, Integer part_number, byte[] part) {
+		// add part
 		parts.put(part_number, part);
-	}
-
-	public void addShardPath(Path shard_path) {
+		// add path
 		if(shards_paths == null) {
 			shards_paths = new LinkedList<Path>();
 		}
