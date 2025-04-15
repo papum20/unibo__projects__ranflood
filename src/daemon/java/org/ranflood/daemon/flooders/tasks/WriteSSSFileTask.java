@@ -63,10 +63,6 @@ public class WriteSSSFileTask extends WriteFileTask {
 
 			while (retries_counter <= retries_max) {
 
-				// logs
-				//log( "Task SSS for: " + filePath() + "; signature: " + signature + "; retries_counter: " + retries_counter
-				//		+ "; memoryFree: " + Jvm.freeMemory() );
-
 				File parentFolder = filePath().getParent().toFile();
 				if ( !parentFolder.exists() ) {
 					synchronized ( filePath() ) {
@@ -76,15 +72,12 @@ public class WriteSSSFileTask extends WriteFileTask {
 
 				try {
 					// split with sss
-					//long time_start = System.currentTimeMillis();
 					OriginalFile original_file =
 							(retries_counter > 0)
 							? sss.getSplitFile( filePath(), content(), Security.hash_fromBase64(signature) )
 							: sss.getSplitFile(
 									filePath(), content(), Security.hash_fromBase64(signature),
 									 new_n, new_k);
-					//long time_end = System.currentTimeMillis();
-					//System.out.println(filePath() + ", time split: " + (time_end - time_start));
 
 					// try to write all shards
 					int shards_created = 0;
@@ -107,7 +100,8 @@ public class WriteSSSFileTask extends WriteFileTask {
 
 					// original file's removal is a single-use task, while this task will be retried in case of error
 					/*
-					// if enough shards weren't created, for any reason, better recreate original file, so it's not lost
+					// Skipping this for performance:
+					// If enough shards weren't created, for any reason, better recreate original file, so it's not lost.
 					if(shards_created < sss.k && !filePath().toFile().exists() ) {
 						writeFile(filePath(), content());
 					}

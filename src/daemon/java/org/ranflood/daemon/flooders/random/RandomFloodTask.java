@@ -65,7 +65,7 @@ public class RandomFloodTask extends FloodTaskGenerator {
 
 	private static final Random rng = new Random();
 	private static final ReentrantLock randomCacheLock = new ReentrantLock();
-	private static final Pair< AtomicInteger, byte[] >[] randomCache = (org.ranflood.common.utils.Pair< AtomicInteger, byte[] >[] ) new Pair< ?, ? >[ 64 ];
+	private static final Pair< AtomicInteger, byte[] >[] randomCache = ( Pair< AtomicInteger, byte[] >[] ) new Pair< ?, ? >[ 64 ];
 	private static int cacheCursor = 0;
 	private static final int cache_value_max_usage = 8;
 

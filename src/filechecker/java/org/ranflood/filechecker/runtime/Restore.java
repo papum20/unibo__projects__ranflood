@@ -345,7 +345,6 @@ public class Restore {
     Json.Object report_content = new Json.Object();
     report_content.put( reportFilesKey("Tot: saved in checksum (filtered)",                                                                           checksum_filtered_map.size()),          json_checksum_filtered );
     report_content.put( reportFilesKey("Tot: saved in checksum and still present, with correct signature",                                            report_check_content.size()),           json_report_check );
-    //report_content.put( reportFilesKey("Total valid files (including recovered and those not corrupted)",                                                  report_check_content.size()),           json_report_check );
     report_content.put( reportFilesKey("Recovered: present in checksum and file not existing, but now recovered (including path conflict)",           recovered.size()),                      json_files_recovered );
     report_content.put( reportFilesKey("Recovered, path conflict: recovered but changed name because a different file with the same name was found",  recovered_path_conflict),               json_recovered_path_conflict );
     report_content.put( reportFilesKey("Recovered, wrong checksum: recovered but changed name because snapshot has a different checksum",             recovered_wrong_snapshot),              json_recovered_wrong_snapshot );

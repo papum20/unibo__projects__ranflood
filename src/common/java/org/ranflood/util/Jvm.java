@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2024 (C) by Daniele D'Ugo <danieledugo1@gmail.com>               *
+ * Copyright 2025 (C) by Daniele D'Ugo <danieledugo1@gmail.com>               *
  *                                                                            *
  * This program is free software; you can redistribute it and/or modify       *
  * it under the terms of the GNU Library General Public License as            *

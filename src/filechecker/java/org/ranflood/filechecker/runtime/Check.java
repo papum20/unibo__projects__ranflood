@@ -33,13 +33,24 @@ import static org.ranflood.filechecker.runtime.Utils.getFileSignature;
 
 public class Check {
 
-  public static void run( File checksum, File folder, File report, Boolean deep ) throws IOException {
+  public static void run( File checksum, File folder, File report, Boolean deep,
+                          File[] exclude_dirs,
+                          File log, Boolean debug
+  ) throws IOException {
     if ( !Files.exists( checksum.toPath().toAbsolutePath().getParent() ) )
       throw new IOException( "could not file checksum file " + checksum.toPath() );
     if ( !Files.exists( folder.toPath() ) )
       throw new IOException( "folder " + folder + " does not exist" );
     if ( !Files.isDirectory( folder.toPath() ) )
       throw new IOException( folder + " is not a directory" );
+
+    if (exclude_dirs == null) exclude_dirs = new File[0];
+    Set<Path> exclude_set = Arrays.stream(exclude_dirs)
+            .map(dir -> Path.of(dir.getAbsolutePath()) )
+            .collect(Collectors.toSet());
+
+    Path file_log = ( log != null ) ? log.toPath() : null;
+
     Json jsonChecksum = Json.parse( Files.readString( checksum.toPath() ) );
     Map< String, String > checksumMap = jsonChecksum.asArray().
         stream()
@@ -54,7 +65,7 @@ public class Check {
 //										.collect( Collectors.toUnmodifiableMap( s -> s[ 0 ], s -> s[ 1 ] ) ) );
     // first we check if we can find all files
 
-    Map< String, String > reportContent = check( folder, checksumMap, null, null, deep, false );
+    Map< String, String > reportContent = check( folder, checksumMap, exclude_set, file_log, deep, debug );
 
     Json.Array a = new Json.Array();
     reportContent.forEach( ( key, value ) -> {
@@ -115,26 +126,6 @@ public class Check {
             break;
         }
       }
-
-      //			Files.walk( folder.toPath().toAbsolutePath() )
-      //							.filter( f -> Files.isRegularFile( f, LinkOption.NOFOLLOW_LINKS ) )
-      //							.filter( f -> ! found.contains( f.toString() ) )
-      //							.forEach( f -> {
-      //								try {
-      //									String signature = getFileSignature( f );
-      //									if( missingSignatures.contains( signature ) ){
-      //										missingSignatures.remove( signature );
-      //										found.add( folder.toPath().toAbsolutePath().relativize( f ).toString() + ","  );
-      //									}
-      //								} catch ( IOException | NoSuchAlgorithmException ignored ) {}
-      //							} );
-      //		}
-      //		}
-      //  String reportContentString = reportContent.entrySet().stream()
-      //    .map( e -> e.getKey() + "," + e.getValue() )
-      //    .collect( Collectors.joining( "\n" ) );
-      //  Files.writeString( report.toPath(), reportContentString );
-
     } catch ( IOException e ) {
       e.printStackTrace();
     }

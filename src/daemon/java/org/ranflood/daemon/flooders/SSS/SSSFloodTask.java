@@ -81,9 +81,6 @@ public class SSSFloodTask extends FloodTaskGenerator {
 		lock.readLock().lock();
 		List< FileTask > t = new LinkedList<>(tasks);
 
-		// logs
-		//for (FileTask ft : t) log("Get file tasks: " + ft.filePath().toString());
-
 		lock.readLock().unlock();
 		if ( t.isEmpty() && taskListResponseRetriesCounter < maxTaskListResponseRetries ) {
 			taskListResponseRetriesCounter++;
@@ -143,24 +140,9 @@ public class SSSFloodTask extends FloodTaskGenerator {
 				if ( ( SSSSnapshooter.isEmpty() || (signature_snapshot != null && signature_snapshot.equals( signature ) ))
 					&& !ShardFile.isValid(bytes)
 				) {
-
-					// logs
-					//String log_msg = "Added task for " + file + ", size is " + bytes.length + "\n";
-					//lock.readLock().lock();
-					//log_msg += "Tasks before, for: " + file + "\n";
-					//for (FileTask ft : tasks) log_msg += " - " + ft.filePath().toString() + "\n";
-					//lock.readLock().unlock();
-
 					lock.writeLock().lock();
 					tasks.add(new WriteSSSFileTask( filePath, bytes, floodMethod(), sss, signature ));
 					lock.writeLock().unlock();
-
-					// logs
-					//lock.readLock().lock();
-					//log_msg += "Tasks after, for: " + file + "\n";
-					//for (FileTask ft : tasks) log_msg += " - " + ft.filePath().toString() + "\n";
-					//lock.readLock().unlock();
-					//log(log_msg);
 
 					// remove original file
 					if (remove_originals) {

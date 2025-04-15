@@ -54,15 +54,35 @@ public class CheckCommand implements Callable< Integer > {
 	private File folder;
 
 	@CommandLine.Option(
+			names = { "--debug" },
+			description = "If --logfile was also used, print more debugging logs."
+	)
+	private Boolean debug = false;
+
+	@CommandLine.Option(
 					names = { "--deep" },
 					description = "Perform a deep check, comparing files absent from the checksum to find possible duplicates (coinciding signatures)"
 	)
 	private final Boolean deep = false;
 
+	@CommandLine.Option(
+			names = { "-e", "--exclude" },
+			description = "Exclude dirs. Can repeat to indicate more exclusions."
+	)
+	private File[] exclude_dirs = null;
+
+	@CommandLine.Option(
+			names = { "-l", "--logfile" },
+			description = "Enable more logs and specify the log file where to print them."
+	)
+	private File log_file = null;
+
 	@Override
 	public Integer call() {
 		try {
-			Check.run( checksumFile, folder, reportFile, deep );
+			Check.run( checksumFile, folder, reportFile, deep,
+					exclude_dirs,
+					log_file, debug );
 			System.out.println( "Report of the check of folder " + folder + " saved in file " + reportFile.getAbsolutePath() );
 		} catch ( IOException e ) {
 			System.err.println( "Problem writing the report, " + e.getMessage() );
